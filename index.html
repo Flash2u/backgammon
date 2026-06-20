@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>極致美學五子棋 - Cyber Gomoku</title>
-    <link rel="stylesheet" href="style.css?v=1.5.0">
+    <link rel="stylesheet" href="style.css?v=1.6.0">
     <!-- Google Fonts: Inter & Outfit for modern look -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -181,20 +181,21 @@
             <h2 class="modal-title">關於遊戲</h2>
             <div class="modal-scroll-area">
                 <p style="margin-bottom: 12px; font-weight: 600; text-align: center; font-size: 1rem; color: var(--text-primary);">🌌 Cyber Gomoku - 極致美學五子棋</p>
-                <p style="margin-bottom: 6px;"><strong>目前版本：</strong>v1.5.0</p>
+                <p style="margin-bottom: 6px;"><strong>目前版本：</strong>v1.6.0</p>
                 <p style="margin-bottom: 6px;"><strong>發布日期：</strong>2026-06-20</p>
                 <p style="margin-bottom: 12px;"><strong>開發團隊：</strong>Antigravity AI Co-Pilot & Yuki</p>
                 <hr>
-                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">🛠️ 本版本摘要 (v1.5.0)：</p>
+                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">🛠️ 本版本摘要 (v1.6.0)：</p>
                 <ul>
-                    <li>🎯 **3D 視角點擊修復**：修正 3D 傾斜視角下，棋盤中間（天元）及中上半部無法落子之問題。實作「物理近鄰點擊補償機制 (Click Proximity Compensation)」，保證點擊精度 100% 精準。</li>
-                    <li>🌐 **線上 P2P 連線穩定度提升**：強制使用加密安全 Websocket 信令通道 (`wss://`，443 端口)，並補強 Google STUN 伺服器，大幅提高跨網絡 WebRTC NAT 穿透成功率與開局流暢度。</li>
-                    <li>📐 **3D 擬真傾斜視角 (3D Perspective)**：支援 2D/3D 俯瞰視角流暢切換、3D 立體側邊厚度投影與落子 3D 物理墜落動畫。</li>
+                    <li>✨ **3D 物理撞擊震顫 (Board Impact Shake)**：落子砸向棋盤的瞬間，整個棋盤會產生極微幅的三維受力抖動，模擬震撼的撞擊力量感。</li>
+                    <li>🔄 **悔棋 3D 反向飛起收回 (Undo Animation)**：悔棋時，被收回的棋子不直接消失，而是沿 Z 軸升起、旋轉、縮小並淡出，並帶有 350ms 的棋盤防重複落子保護鎖。</li>
+                    <li>💡 **滑鼠隨動動態反射光影 (Mouse-Responsive Lighting)**：棋盤表面覆蓋高質感反光疊加層，高光點隨滑鼠平滑漂移偏折，並自動適配木紋拋光、霓虹青紫等多主題反光特色。</li>
                 </ul>
                 <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-secondary);">📜 歷史版本摘要：</p>
                 <details style="margin-bottom: 12px; font-size: 0.85rem; color: var(--text-secondary);">
-                    <summary style="cursor: pointer; padding: 4px 0; color: var(--accent-primary); outline: none;">查看歷史更新歷史 (v1.4.0 及更早)</summary>
+                    <summary style="cursor: pointer; padding: 4px 0; color: var(--accent-primary); outline: none;">查看歷史更新歷史 (v1.5.0 及更早)</summary>
                     <ul style="padding-left: 16px; margin-top: 8px;">
+                        <li>🎯 **v1.5.0**：修復 3D 視角天元無法落子 Bug 與線上 P2P 斷線、Websocket 安全連線。</li>
                         <li>🌐 **v1.4.0**：支援 WebRTC 線上連線對戰 (P2P)、3D 傾斜視角及關於面板。</li>
                         <li>⚖️ **v1.3.0**：支援 Renju 禁手規則、Web Workers 背景運算與 Zobrist 雜湊優化。</li>
                     </ul>
@@ -223,7 +224,7 @@
 
     <!-- Load scripts at the end -->
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-    <script src="ai.js?v=1.5.0"></script>
-    <script src="app.js?v=1.5.0"></script>
+    <script src="ai.js?v=1.6.0"></script>
+    <script src="app.js?v=1.6.0"></script>
 </body>
 </html>

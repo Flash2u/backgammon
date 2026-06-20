@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 視角狀態變數
     let viewMode = '2d';        // '2d' (平面) 或 '3d' (立體)
+    let isUndoing = false;      // 避免悔棋動畫播放期間重複操作
 
     // P2P 線上對戰狀態變數
     let peer = null;            // PeerJS 實例
@@ -196,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 對戰控制與落子邏輯
     // ==========================================================================
     function handleCellClick(r, c) {
-        if (isGameOver || isAiThinking) return;
+        if (isGameOver || isAiThinking || isUndoing) return;
         if (board[r][c] !== 0) return; // 該位置已有棋子
 
         // 人機對戰模式下，限制只能在玩家回合落子
@@ -275,6 +276,18 @@ document.addEventListener('DOMContentLoaded', () => {
         updateTurnUI();
         updateThreatHints();
         updateForbiddenMoves();
+
+        // 3D 視角下落子瞬間棋盤微震特效
+        if (viewMode === '3d') {
+            setTimeout(() => {
+                const wrapper = boardEl.parentElement;
+                wrapper.classList.add('impact-shake');
+                // 震動動畫時長為 240ms，結束後移除類別以便下次再觸發
+                setTimeout(() => {
+                    wrapper.classList.remove('impact-shake');
+                }, 240);
+            }, 200); // 200ms 正好是落子從空中墜地砸上棋面的瞬間
+        }
     }
 
     // 渲染棋子元件與落子特效
@@ -647,20 +660,54 @@ document.addEventListener('DOMContentLoaded', () => {
     // 悔棋與歷史管理
     // ==========================================================================
     function executeUndo(stepsToUndo) {
-        if (history.length === 0 || isGameOver || isAiThinking) return;
+        if (history.length === 0 || isGameOver || isAiThinking || isUndoing) return;
 
-        // 播放悔棋音效
-        playUndoSound();
-
-        // 退回指定步數
+        // 1. 取得目標回退狀態（但不先套用）
+        let tempHistory = [...history];
         let targetState = null;
         for (let i = 0; i < stepsToUndo; i++) {
-            if (history.length > 0) {
-                targetState = history.pop();
+            if (tempHistory.length > 0) {
+                targetState = tempHistory.pop();
+            }
+        }
+        if (!targetState) return;
+
+        // 2. 鎖定棋盤，播放悔棋音效
+        isUndoing = true;
+        playUndoSound();
+
+        // 3. 對比當前棋盤與目標棋盤，找出需要移除的棋子
+        const targetBoard = targetState.board;
+        const stonesToRemove = [];
+        for (let r = 0; r < BOARD_SIZE; r++) {
+            for (let c = 0; c < BOARD_SIZE; c++) {
+                // 當前有棋子，但目標棋盤為空，說明這顆棋子要被移除
+                if (board[r][c] !== 0 && targetBoard[r][c] === 0) {
+                    stonesToRemove.push({ r, c });
+                }
             }
         }
 
-        if (targetState) {
+        // 4. 找到對應的 DOM 元素，加上 stone-undoing class 觸發飛起動畫
+        stonesToRemove.forEach(({ r, c }) => {
+            const cell = boardEl.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+            if (cell) {
+                const stone = cell.querySelector('.stone');
+                if (stone) {
+                    stone.classList.add('stone-undoing');
+                }
+            }
+        });
+
+        // 5. 延遲 350ms 待飛起動畫播完後，正式套用回退狀態並重繪
+        setTimeout(() => {
+            // 從 history 中真正 pop 出來
+            for (let i = 0; i < stepsToUndo; i++) {
+                if (history.length > 0) {
+                    history.pop();
+                }
+            }
+
             board = targetState.board;
             currentTurn = targetState.currentTurn;
             lastMove = targetState.lastMove;
@@ -692,11 +739,13 @@ document.addEventListener('DOMContentLoaded', () => {
             updateTurnUI();
             updateThreatHints();
             updateForbiddenMoves(); // 悔棋後重算黑棋禁手狀態
-        }
 
-        if (history.length === 0) {
-            btnUndo.disabled = true;
-        }
+            if (history.length === 0) {
+                btnUndo.disabled = true;
+            }
+
+            isUndoing = false; // 解除鎖定
+        }, 350);
     }
 
     function undoMove() {
@@ -1693,6 +1742,30 @@ document.addEventListener('DOMContentLoaded', () => {
             const c = parseInt(closestCell.dataset.col);
             handleCellClick(r, c);
         }
+    });
+
+    // 3D 滑鼠隨動動態反射光影
+    const boardWrapperEl = boardEl.parentElement;
+    boardWrapperEl.addEventListener('mousemove', (e) => {
+        if (viewMode !== '3d') return; // 僅在 3D 視角下啟用動態光影以節省計算效能
+        
+        const rect = boardWrapperEl.getBoundingClientRect();
+        const x = e.clientX - rect.left - rect.width / 2;
+        const y = e.clientY - rect.top - rect.height / 2;
+        
+        // 歸一化坐標 (-1.0 到 1.0)
+        const pctX = x / (rect.width / 2);
+        const pctY = y / (rect.height / 2);
+        
+        boardWrapperEl.style.setProperty('--light-x', pctX.toFixed(3));
+        boardWrapperEl.style.setProperty('--light-y', pctY.toFixed(3));
+    });
+
+    boardWrapperEl.addEventListener('mouseleave', () => {
+        if (viewMode !== '3d') return;
+        // 滑鼠離開後平滑重設為中心
+        boardWrapperEl.style.setProperty('--light-x', '0');
+        boardWrapperEl.style.setProperty('--light-y', '0');
     });
 
     // 啟動初始化

@@ -589,6 +589,50 @@ body.theme-slate .stat-item {
     max-width: 620px;
     aspect-ratio: 1 / 1;
     pointer-events: auto; /* 確保棋盤及子元素可點擊 */
+    position: relative; /* 確保偽元素絕對定位 */
+}
+
+/* 3D 滑鼠隨動動態反射高光層 */
+.board-wrapper::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px; /* 略小於 border-radius 20px 以契合內縮棋面 */
+    pointer-events: none;
+    z-index: 10; /* 高於網格線與棋子，低於彈出視窗 */
+    mix-blend-mode: screen;
+    opacity: 0.8;
+    transition: background 0.1s ease;
+}
+
+/* 霓虹主題下的反光點 (微弱青綠/粉紅高光) */
+body.theme-neon .board-wrapper::before {
+    background: radial-gradient(
+        circle at calc(50% + var(--light-x, 0) * 100px) calc(50% + var(--light-y, 0) * 100px),
+        rgba(0, 242, 254, 0.08) 0%,
+        rgba(255, 0, 127, 0.04) 40%,
+        rgba(0, 0, 0, 0) 70%
+    );
+}
+
+/* 木紋主題下的反光點 (溫潤拋光面白色高光) */
+body.theme-wood .board-wrapper::before {
+    background: radial-gradient(
+        circle at calc(50% + var(--light-x, 0) * 100px) calc(50% + var(--light-y, 0) * 100px),
+        rgba(255, 255, 255, 0.09) 0%,
+        rgba(255, 255, 255, 0.02) 50%,
+        rgba(0, 0, 0, 0) 80%
+    );
+}
+
+/* 雅緻灰主題下的反光點 */
+body.theme-slate .board-wrapper::before {
+    background: radial-gradient(
+        circle at calc(50% + var(--light-x, 0) * 100px) calc(50% + var(--light-y, 0) * 100px),
+        rgba(255, 255, 255, 0.07) 0%,
+        rgba(255, 255, 255, 0.01) 40%,
+        rgba(0, 0, 0, 0) 75%
+    );
 }
 
 body.theme-wood .board-wrapper {
@@ -1203,4 +1247,44 @@ body.theme-slate .board-wrapper.view-3d {
 .gomoku-board,
 .cell {
     transform-style: preserve-3d;
+}
+
+/* 3D 落子棋盤微震動畫 */
+@keyframes shakeBoard3D {
+    0% { transform: rotateX(32deg) rotateY(0deg) rotateZ(-12deg) translateY(-10px) translateZ(0px); }
+    15% { transform: rotateX(32.5deg) rotateY(0.1deg) rotateZ(-11.9deg) translateY(-10px) translateZ(-2px); }
+    30% { transform: rotateX(31.6deg) rotateY(-0.1deg) rotateZ(-12.1deg) translateY(-10px) translateZ(1px); }
+    45% { transform: rotateX(32.2deg) rotateY(0.05deg) rotateZ(-11.95deg) translateY(-10px) translateZ(-0.8px); }
+    60% { transform: rotateX(31.8deg) rotateY(-0.02deg) rotateZ(-12.02deg) translateY(-10px) translateZ(0.4px); }
+    75% { transform: rotateX(32.1deg) rotateY(0.01deg) rotateZ(-11.98deg) translateY(-10px) translateZ(-0.2px); }
+    90% { transform: rotateX(31.95deg) rotateY(-0.005deg) rotateZ(-12.005deg) translateY(-10px) translateZ(0.1px); }
+    100% { transform: rotateX(32deg) rotateY(0deg) rotateZ(-12deg) translateY(-10px) translateZ(0px); }
+}
+
+.board-wrapper.view-3d.impact-shake {
+    animation: shakeBoard3D 0.24s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+}
+
+/* 3D 悔棋棋子反向飛起淡出動畫 */
+@keyframes removeStone3D {
+    0% {
+        transform: translateZ(10px) scale(1);
+        opacity: 1;
+        box-shadow: -4px 6px 10px rgba(0, 0, 0, 0.45);
+    }
+    25% {
+        transform: translateZ(6px) scale(1.06);
+        opacity: 0.95;
+        box-shadow: -2px 4px 6px rgba(0, 0, 0, 0.35);
+    }
+    100% {
+        transform: translateZ(60px) scale(0);
+        opacity: 0;
+        box-shadow: -20px 30px 40px rgba(0, 0, 0, 0.1);
+    }
+}
+
+.board-wrapper.view-3d .stone.stone-undoing {
+    animation: removeStone3D 0.35s cubic-bezier(0.25, 1, 0.5, 1) forwards !important;
+    pointer-events: none;
 }
