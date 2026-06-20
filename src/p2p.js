@@ -24,7 +24,6 @@ let callbacks = {
     onVoiceCall: (call) => {}
 };
 
-const LOBBY_URL = 'https://kvdb.io/8xN9L2b8zF69P1k5Lobby/rooms';
 
 export const p2p = {
     init(cbs) {
@@ -507,24 +506,7 @@ export const p2p = {
         // 本地暫存，以便其他 client request 時隨時重發
         localStorage.setItem('gomoku_registered_room', JSON.stringify(roomData));
 
-        // 1. KVDB REST 備援寫入 (加上 3 秒超時)
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000);
-        try {
-            await fetch(`${LOBBY_URL}/${peer.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(roomData),
-                signal: controller.signal
-            });
-            clearTimeout(timeoutId);
-            console.log("Room registered in KVDB lobby:", roomData);
-        } catch (e) {
-            clearTimeout(timeoutId);
-            console.error("Failed to register room in KVDB lobby:", e);
-        }
-
-        // 2. WebSocket 廣播事件
+        // WebSocket 廣播事件
         if (!lobbySocket || lobbySocket.readyState !== WebSocket.OPEN) {
             this.initLobbySocket(lobbyCallback);
         }
@@ -540,22 +522,7 @@ export const p2p = {
         if (!peer || !peer.id) return;
         localStorage.removeItem('gomoku_registered_room');
 
-        // 1. KVDB REST 備援刪除 (加上 3 秒超時)
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000);
-        try {
-            await fetch(`${LOBBY_URL}/${peer.id}`, {
-                method: 'DELETE',
-                signal: controller.signal
-            });
-            clearTimeout(timeoutId);
-            console.log("Room unregistered from KVDB lobby");
-        } catch (e) {
-            clearTimeout(timeoutId);
-            console.error("Failed to unregister room from KVDB:", e);
-        }
-
-        // 2. WebSocket 廣播關閉事件
+        // WebSocket 廣播關閉事件
         this.broadcastLobbyEvent({
             type: 'room_closed',
             id: peer.id
@@ -574,38 +541,10 @@ export const p2p = {
         // 如果 WebSocket lobby 連接可用，優先回傳當前 Map 快照並請求更新
         if (lobbySocket && lobbySocket.readyState === WebSocket.OPEN) {
             this.broadcastLobbyEvent({ type: 'request_room_list' });
-            callback(Array.from(lobbyRoomsMap.values()), null);
-            return;
         }
 
-        // 否則自動降級為 KVDB REST 輪詢
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 秒超時
-        
-        try {
-            const res = await fetch(`${LOBBY_URL}/?values=true`, { signal: controller.signal });
-            clearTimeout(timeoutId);
-            if (!res.ok) {
-                if (res.status === 404) {
-                    callback([], null);
-                    return;
-                }
-                throw new Error(`HTTP error! status: ${res.status}`);
-            }
-            const data = await res.json();
-            const rooms = data.map(item => JSON.parse(item[1]));
-            
-            // 更新本地快照
-            lobbyRoomsMap.clear();
-            rooms.forEach(r => lobbyRoomsMap.set(r.id, r));
-            
-            callback(rooms, null);
-        } catch (e) {
-            clearTimeout(timeoutId);
-            console.warn("Failed to fetch rooms from KVDB lobby, returning local cache:", e);
-            // 降級回傳本地 Map 快照
-            callback(Array.from(lobbyRoomsMap.values()), null);
-        }
+        // 即時將目前的房間快照回傳給 UI，達到零延遲體驗
+        callback(Array.from(lobbyRoomsMap.values()), null);
     },
 
     // ==========================================================================
