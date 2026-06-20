@@ -393,7 +393,7 @@ document.addEventListener('DOMContentLoaded', () => {
         rings.forEach(ring => ring.remove());
     }
 
-    // 掃描並更新棋盤上的威脅提示 (「活三」或「死四」的危險/關鍵空格)
+    // 掃描並更新棋盤上的威脅提示 (「活三」或「死四」的危險/關鍵空格，細分黑白棋與致命/預警等級)
     function updateThreatHints() {
         clearThreatHints();
         if (!hintEnabled || isGameOver || board.length === 0) return;
@@ -402,16 +402,38 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let r = 0; r < BOARD_SIZE; r++) {
             for (let c = 0; c < BOARD_SIZE; c++) {
                 if (board[r][c] === 0) {
-                    // 如果在此落子對黑棋 (1) 或白棋 (2) 能形成五連子 (死四防守/進攻點)
-                    // 或者能形成活四 (活三防守/進攻點)
-                    const isThreat = completesFive(r, c, 1) || completesFive(r, c, 2) ||
-                                     createsLiveFour(r, c, 1) || createsLiveFour(r, c, 2);
+                    // 分別檢測黑棋(1)與白棋(2)的威脅類型
+                    const completesFiveBlack = completesFive(r, c, 1);
+                    const completesFiveWhite = completesFive(r, c, 2);
+                    const createsLiveFourBlack = createsLiveFour(r, c, 1);
+                    const createsLiveFourWhite = createsLiveFour(r, c, 2);
 
-                    if (isThreat) {
+                    // 致命威脅：在此落子能直接五連 (不論黑白)
+                    const isFatal = completesFiveBlack || completesFiveWhite;
+                    // 預警威脅：在此落子能成活四 (不論黑白，且非直接五連)
+                    const isWarning = !isFatal && (createsLiveFourBlack || createsLiveFourWhite);
+
+                    if (isFatal || isWarning) {
                         const cell = boardEl.querySelector(`[data-row="${r}"][data-col="${c}"]`);
                         if (cell && !cell.querySelector('.threat-ring')) {
                             const ring = document.createElement('div');
                             ring.className = 'threat-ring';
+
+                            // 1. 設定威脅等級類別
+                            if (isFatal) {
+                                ring.classList.add('threat-fatal');
+                            } else {
+                                ring.classList.add('threat-warning');
+                            }
+
+                            // 2. 設定所屬棋子顏色類別 (可能同時為黑白雙方威脅)
+                            if (completesFiveBlack || (isWarning && createsLiveFourBlack)) {
+                                ring.classList.add('threat-black');
+                            }
+                            if (completesFiveWhite || (isWarning && createsLiveFourWhite)) {
+                                ring.classList.add('threat-white');
+                            }
+
                             cell.appendChild(ring);
                         }
                     }
