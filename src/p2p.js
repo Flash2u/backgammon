@@ -8,6 +8,7 @@ let pingInterval = null;
 let lastHeartbeatReceived = 0;
 let reconnectInterval = null;
 let reconnectCountdownTimer = null;
+let connectTimeoutTimer = null;
 let spectatorConns = [];
 
 let lobbySocket = null;
@@ -48,7 +49,7 @@ export const p2p = {
 
         callbacks.onStatusChange('連線信令伺服器中...');
         peer = new Peer(null, {
-            debug: 1,
+            debug: 3,
             host: '0.peerjs.com',
             port: 443,
             secure: true,
@@ -60,7 +61,12 @@ export const p2p = {
                     { urls: 'stun:stun1.l.google.com:19302' },
                     { urls: 'stun:stun2.l.google.com:19302' },
                     { urls: 'stun:stun3.l.google.com:19302' },
-                    { urls: 'stun:stun4.l.google.com:19302' }
+                    { urls: 'stun:stun4.l.google.com:19302' },
+                    { urls: 'stun:stun.xten.com' },
+                    { urls: 'stun:stun.ekiga.net' },
+                    { urls: 'stun:stun.ideasip.com' },
+                    { urls: 'stun:stun.schlund.de' },
+                    { urls: 'stun:stun.stunprotocol.org:3478' }
                 ]
             }
         });
@@ -124,9 +130,22 @@ export const p2p = {
         callbacks.onStatusChange('連線對手中...', 'var(--text-secondary)');
         p2pMyColor = 2; // 客方白棋後手
         
+        if (connectTimeoutTimer) {
+            clearTimeout(connectTimeoutTimer);
+        }
+        
         const conn = peer.connect(targetId);
         p2pConn = conn;
         this.setupConnection(conn);
+        
+        // 15 秒 WebRTC 連線與穿透超時偵測
+        connectTimeoutTimer = setTimeout(() => {
+            if (p2pConn && !p2pConn.open) {
+                console.warn("P2P connection establishment timeout. Likely WebRTC hole punching failed.");
+                callbacks.onToast('⚠️ 連線超時！雙方網路可能存在防火牆或 NAT 限制，導致 WebRTC 穿透失敗。', true);
+                this.close();
+            }
+        }, 15000);
     },
 
     connectSpectator(targetId) {
@@ -141,6 +160,11 @@ export const p2p = {
         oppId = conn.peer;
 
         const onConnOpen = () => {
+            // 清除連線超時計時器
+            if (connectTimeoutTimer) {
+                clearTimeout(connectTimeoutTimer);
+                connectTimeoutTimer = null;
+            }
             // 清除重新連線定時器
             if (reconnectInterval) {
                 clearInterval(reconnectInterval);
@@ -239,6 +263,11 @@ export const p2p = {
     },
 
     handleClose() {
+        // 清除連線超時計時器
+        if (connectTimeoutTimer) {
+            clearTimeout(connectTimeoutTimer);
+            connectTimeoutTimer = null;
+        }
         // 清除心跳包
         if (pingInterval) {
             clearInterval(pingInterval);
@@ -315,6 +344,10 @@ export const p2p = {
     },
 
     close() {
+        if (connectTimeoutTimer) {
+            clearTimeout(connectTimeoutTimer);
+            connectTimeoutTimer = null;
+        }
         if (pingInterval) {
             clearInterval(pingInterval);
             pingInterval = null;
