@@ -1,0 +1,1023 @@
+/* ==========================================================================
+   CSS DESIGN SYSTEM & VARIABLE DEFINITIONS
+   ========================================================================== */
+
+:root {
+    /* Theme Neon (Default) */
+    --neon-bg-1: #090a15;
+    --neon-bg-2: #121526;
+    --neon-card-bg: rgba(20, 24, 46, 0.65);
+    --neon-card-border: rgba(99, 102, 241, 0.15);
+    --neon-text-primary: #f8fafc;
+    --neon-text-secondary: #94a3b8;
+    --neon-accent: #6366f1;
+    --neon-accent-glow: rgba(99, 102, 241, 0.4);
+    --neon-board-bg: rgba(15, 23, 42, 0.9);
+    --neon-board-border: #3b82f6;
+    --neon-board-line: rgba(59, 130, 246, 0.25);
+    --neon-board-star: #60a5fa;
+    --neon-btn-primary: linear-gradient(135deg, #6366f1, #3b82f6);
+    --neon-btn-hover: linear-gradient(135deg, #4f46e5, #2563eb);
+    --neon-btn-secondary: rgba(30, 41, 59, 0.8);
+    --neon-btn-secondary-hover: rgba(51, 65, 85, 0.8);
+
+    /* Theme Wood */
+    --wood-bg-1: #e6dfd3;
+    --wood-bg-2: #d2c5b3;
+    --wood-card-bg: rgba(255, 255, 255, 0.8);
+    --wood-card-border: rgba(139, 92, 26, 0.15);
+    --wood-text-primary: #2d241e;
+    --wood-text-secondary: #705e52;
+    --wood-accent: #8b5cf6;
+    --wood-accent-glow: rgba(139, 92, 26, 0.2);
+    --wood-board-bg: #e2be8c; /* Warm Kaya wood color */
+    --wood-board-border: #5c4021;
+    --wood-board-line: rgba(92, 64, 33, 0.4);
+    --wood-board-star: #3d2b16;
+    --wood-btn-primary: linear-gradient(135deg, #8b5cf6, #6d28d9);
+    --wood-btn-hover: linear-gradient(135deg, #7c3aed, #5b21b6);
+    --wood-btn-secondary: rgba(255, 255, 255, 0.9);
+    --wood-btn-secondary-hover: rgba(243, 244, 246, 0.9);
+
+    /* Theme Slate */
+    --slate-bg-1: #f1f5f9;
+    --slate-bg-2: #e2e8f0;
+    --slate-card-bg: rgba(255, 255, 255, 0.75);
+    --slate-card-border: rgba(148, 163, 184, 0.2);
+    --slate-text-primary: #0f172a;
+    --slate-text-secondary: #475569;
+    --slate-accent: #0f172a;
+    --slate-accent-glow: rgba(15, 23, 42, 0.1);
+    --slate-board-bg: #ffffff;
+    --slate-board-border: #0f172a;
+    --slate-board-line: rgba(15, 23, 42, 0.15);
+    --slate-board-star: #0f172a;
+    --slate-btn-primary: #0f172a;
+    --slate-btn-hover: #1e293b;
+    --slate-btn-secondary: #e2e8f0;
+    --slate-btn-secondary-hover: #cbd5e1;
+
+    /* Theme Variable Mappings */
+    --bg-1: var(--neon-bg-1);
+    --bg-2: var(--neon-bg-2);
+    --card-bg: var(--neon-card-bg);
+    --card-border: var(--neon-card-border);
+    --text-primary: var(--neon-text-primary);
+    --text-secondary: var(--neon-text-secondary);
+    --accent: var(--neon-accent);
+    --accent-glow: var(--neon-accent-glow);
+    --board-bg: var(--neon-board-bg);
+    --board-border: var(--neon-board-border);
+    --board-line: var(--neon-board-line);
+    --board-star: var(--neon-board-star);
+    --btn-primary: var(--neon-btn-primary);
+    --btn-hover: var(--neon-btn-hover);
+    --btn-secondary: var(--neon-btn-secondary);
+    --btn-secondary-hover: var(--neon-btn-secondary-hover);
+}
+
+/* ==========================================================================
+   THEME MAPPING SWITCHES
+   ========================================================================== */
+
+body.theme-neon {
+    --bg-1: var(--neon-bg-1);
+    --bg-2: var(--neon-bg-2);
+    --card-bg: var(--neon-card-bg);
+    --card-border: var(--neon-card-border);
+    --text-primary: var(--neon-text-primary);
+    --text-secondary: var(--neon-text-secondary);
+    --accent: var(--neon-accent);
+    --accent-glow: var(--neon-accent-glow);
+    --board-bg: var(--neon-board-bg);
+    --board-border: var(--neon-board-border);
+    --board-line: var(--neon-board-line);
+    --board-star: var(--neon-board-star);
+    --btn-primary: var(--neon-btn-primary);
+    --btn-hover: var(--neon-btn-hover);
+    --btn-secondary: var(--neon-btn-secondary);
+    --btn-secondary-hover: var(--neon-btn-secondary-hover);
+}
+
+body.theme-wood {
+    --bg-1: var(--wood-bg-1);
+    --bg-2: var(--wood-bg-2);
+    --card-bg: var(--wood-card-bg);
+    --card-border: var(--wood-card-border);
+    --text-primary: var(--wood-text-primary);
+    --text-secondary: var(--wood-text-secondary);
+    --accent: var(--wood-accent);
+    --accent-glow: var(--wood-accent-glow);
+    --board-bg: var(--wood-board-bg);
+    --board-border: var(--wood-board-border);
+    --board-line: var(--wood-board-line);
+    --board-star: var(--wood-board-star);
+    --btn-primary: var(--wood-btn-primary);
+    --btn-hover: var(--wood-btn-hover);
+    --btn-secondary: var(--wood-btn-secondary);
+    --btn-secondary-hover: var(--wood-btn-secondary-hover);
+}
+
+body.theme-slate {
+    --bg-1: var(--slate-bg-1);
+    --bg-2: var(--slate-bg-2);
+    --card-bg: var(--slate-card-bg);
+    --card-border: var(--slate-card-border);
+    --text-primary: var(--slate-text-primary);
+    --text-secondary: var(--slate-text-secondary);
+    --accent: var(--slate-accent);
+    --accent-glow: var(--slate-accent-glow);
+    --board-bg: var(--slate-board-bg);
+    --board-border: var(--slate-board-border);
+    --board-line: var(--slate-board-line);
+    --board-star: var(--slate-board-star);
+    --btn-primary: var(--slate-btn-primary);
+    --btn-hover: var(--slate-btn-hover);
+    --btn-secondary: var(--slate-btn-secondary);
+    --btn-secondary-hover: var(--slate-btn-secondary-hover);
+}
+
+/* ==========================================================================
+   GLOBAL STYLES & RESET
+   ========================================================================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+body {
+    background: linear-gradient(135deg, var(--bg-1), var(--bg-2));
+    min-height: 100vh;
+    color: var(--text-primary);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    overflow-x: hidden;
+    transition: background 0.8s ease, color 0.5s ease;
+}
+
+/* Decorative Background Glows for Neon theme */
+.bg-glow {
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    filter: blur(140px);
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.15;
+    transition: opacity 0.5s ease;
+}
+
+body:not(.theme-neon) .bg-glow {
+    opacity: 0;
+}
+
+.glow-1 {
+    top: -10%;
+    left: -10%;
+    background: #4f46e5;
+}
+
+.glow-2 {
+    bottom: -10%;
+    right: -10%;
+    background: #06b6d4;
+}
+
+/* ==========================================================================
+   CONTAINER & LAYOUT
+   ========================================================================== */
+
+.app-container {
+    width: 100%;
+    max-width: 1200px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.app-header {
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.app-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 2.5rem;
+    font-weight: 800;
+    letter-spacing: 4px;
+    background: linear-gradient(to right, #ffffff, var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
+}
+
+body.theme-slate .app-title {
+    background: none;
+    -webkit-text-fill-color: var(--text-primary);
+}
+
+.app-title span {
+    font-weight: 300;
+    color: var(--accent);
+    -webkit-text-fill-color: var(--accent);
+}
+
+body.theme-slate .app-title span {
+    font-weight: 800;
+    color: #475569;
+    -webkit-text-fill-color: #475569;
+}
+
+.app-subtitle {
+    font-size: 0.95rem;
+    letter-spacing: 2px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin-top: 4px;
+}
+
+.game-layout {
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    gap: 32px;
+    align-items: start;
+}
+
+@media (max-width: 968px) {
+    .game-layout {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+    
+    .sidebar-panel {
+        order: 2;
+    }
+    
+    .board-container {
+        order: 1;
+    }
+}
+
+/* ==========================================================================
+   SIDEBAR & GLASS CARDS
+   ========================================================================== */
+
+.sidebar-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.glass-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    transition: all 0.4s ease;
+}
+
+.glass-card:hover {
+    border-color: rgba(99, 102, 241, 0.25);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+}
+
+body.theme-neon .glass-card:hover {
+    box-shadow: 0 15px 35px rgba(99, 102, 241, 0.08);
+}
+
+.card-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    letter-spacing: 1px;
+    border-left: 4px solid var(--accent);
+    padding-left: 10px;
+}
+
+/* Status Card */
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+.turn-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.turn-dot.current-black {
+    background: #111827;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+body.theme-neon .turn-dot.current-black {
+    background: #1e293b;
+    border-color: #00f2fe;
+    box-shadow: 0 0 12px #00f2fe;
+}
+
+.turn-dot.current-white {
+    background: #ffffff;
+    box-shadow: 0 0 10px rgba(255,255,255,0.8);
+    border: 1px solid rgba(0,0,0,0.1);
+}
+
+body.theme-neon .turn-dot.current-white {
+    background: #f472b6;
+    border-color: #ffffff;
+    box-shadow: 0 0 12px #f472b6;
+}
+
+.turn-dot.thinking {
+    animation: pulse 1.2s infinite ease-in-out;
+}
+
+.timer-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+}
+
+/* Config Card Form Items */
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group:last-child {
+    margin-bottom: 0;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+/* Segmented Control (Pills) */
+.segmented-control {
+    display: flex;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 10px;
+    padding: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+body.theme-slate .segmented-control {
+    background: rgba(0,0,0,0.06);
+}
+
+.segmented-control button {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-secondary);
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.segmented-control button.active {
+    background: var(--btn-primary);
+    color: #ffffff;
+    box-shadow: 0 4px 10px var(--accent-glow);
+}
+
+body.theme-slate .segmented-control button.active {
+    color: #ffffff;
+    background: #0f172a;
+}
+
+/* Theme Selector Buttons */
+.theme-selector {
+    display: flex;
+    gap: 12px;
+}
+
+.theme-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+}
+
+.theme-btn:hover {
+    transform: scale(1.1);
+}
+
+.theme-btn.active {
+    border-color: var(--accent);
+    transform: scale(1.1);
+    box-shadow: 0 0 10px var(--accent);
+}
+
+.btn-neon {
+    background: linear-gradient(135deg, #090a15, #6366f1);
+}
+
+.btn-wood {
+    background: linear-gradient(135deg, #e2be8c, #5c4021);
+}
+
+.btn-slate {
+    background: linear-gradient(135deg, #ffffff, #0f172a);
+}
+
+/* Operations Card buttons */
+.btn-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.btn-primary, .btn-secondary {
+    border: none;
+    outline: none;
+    cursor: pointer;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    width: 100%;
+    padding: 14px 20px;
+    background: var(--btn-primary);
+    color: #ffffff;
+    font-size: 1rem;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 15px var(--accent-glow);
+}
+
+.btn-primary:hover {
+    background: var(--btn-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px var(--accent-glow);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-secondary {
+    flex: 1;
+    padding: 12px 16px;
+    background: var(--btn-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--card-border);
+    font-size: 0.9rem;
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: var(--btn-secondary-hover);
+    transform: translateY(-1px);
+}
+
+.btn-secondary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Statistics Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.stat-item {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+    padding: 10px 4px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+body.theme-slate .stat-item {
+    background: rgba(0,0,0,0.03);
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.stat-value {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.btn-link {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    cursor: pointer;
+    text-decoration: underline;
+    display: block;
+    margin: 0 auto;
+    transition: color 0.2s ease;
+}
+
+.btn-link:hover {
+    color: var(--accent);
+}
+
+/* ==========================================================================
+   GOMOKU BOARD
+   ========================================================================== */
+
+.board-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+.board-wrapper {
+    background: var(--board-bg);
+    border: 4px solid var(--board-border);
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    transition: all 0.5s ease;
+    width: 100%;
+    max-width: 620px;
+    aspect-ratio: 1 / 1;
+}
+
+body.theme-wood .board-wrapper {
+    box-shadow: 0 15px 35px rgba(61, 43, 22, 0.4);
+}
+
+body.theme-slate .board-wrapper {
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.08);
+}
+
+.gomoku-board {
+    display: grid;
+    grid-template-columns: repeat(15, 1fr);
+    grid-template-rows: repeat(15, 1fr);
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+/* Individual cell on board represents an intersection */
+.cell {
+    position: relative;
+    aspect-ratio: 1/1;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* The vertical and horizontal board lines */
+.cell::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--board-line);
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+.cell::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--board-line);
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+/* Adjust lines on the edges of the board to make it look professional */
+.cell-top::before {
+    top: 50%;
+}
+
+.cell-bottom::before {
+    bottom: 50%;
+}
+
+.cell-left::after {
+    left: 50%;
+}
+
+.cell-right::after {
+    right: 50%;
+}
+
+/* Star Points (星位) in Go board - classic dots at specific intersections */
+.star-point::before, .star-point::after {
+    /* Retain original lines */
+}
+
+.star-point-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--board-star);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* ==========================================================================
+   STONES & EFFECTS
+   ========================================================================== */
+
+.stone {
+    width: 88%;
+    height: 88%;
+    border-radius: 50%;
+    position: absolute;
+    z-index: 5;
+    pointer-events: none;
+    transform: scale(0);
+    animation: placeStone 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.25) forwards;
+}
+
+/* Black Stone Styles */
+.stone.black {
+    background: radial-gradient(circle at 30% 30%, #3a3f58, #111424 75%, #05060b);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.45);
+}
+
+body.theme-neon .stone.black {
+    background: radial-gradient(circle at 35% 35%, #2e3b5e, #0e122b 75%, #03040e);
+    border: 1.5px solid rgba(0, 242, 254, 0.5);
+    box-shadow: 0 0 12px rgba(0, 242, 254, 0.3), 0 3px 6px rgba(0, 0, 0, 0.6);
+}
+
+body.theme-slate .stone.black {
+    background: #0f172a;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* White Stone Styles */
+.stone.white {
+    background: radial-gradient(circle at 30% 30%, #ffffff, #e5e7eb 70%, #d1d5db);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+}
+
+body.theme-neon .stone.white {
+    background: radial-gradient(circle at 35% 35%, #ffffff, #f472b6 80%, #ec4899);
+    border: 1.5px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 0 0 15px rgba(244, 114, 182, 0.4), 0 3px 6px rgba(0, 0, 0, 0.4);
+}
+
+body.theme-slate .stone.white {
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Last Move Indicator Ring */
+.stone.last-move::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ef4444;
+    box-shadow: 0 0 8px #ef4444;
+    animation: pulseGlow 1.5s infinite ease-in-out;
+}
+
+body.theme-neon .stone.last-move::after {
+    background: #00ff66;
+    box-shadow: 0 0 10px #00ff66;
+}
+
+/* Hover Preview of Stone (Fades in slightly) */
+.hover-preview {
+    width: 84%;
+    height: 84%;
+    border-radius: 50%;
+    position: absolute;
+    z-index: 4;
+    pointer-events: none;
+    opacity: 0;
+    transform: scale(0.9);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.cell:not(.has-stone):hover .hover-preview {
+    opacity: 0.4;
+    transform: scale(1);
+}
+
+.hover-preview.black {
+    background: #111827;
+}
+
+body.theme-neon .hover-preview.black {
+    background: rgba(0, 242, 254, 0.3);
+    border: 1.5px solid rgba(0, 242, 254, 0.6);
+}
+
+.hover-preview.white {
+    background: #ffffff;
+    border: 1px dashed rgba(0,0,0,0.3);
+}
+
+body.theme-neon .hover-preview.white {
+    background: rgba(244, 114, 182, 0.3);
+    border: 1.5px solid rgba(244, 114, 182, 0.6);
+}
+
+/* Winning Stone Glowing Animation */
+.stone.winning-stone {
+    animation: winPulse 1s infinite alternate ease-in-out;
+    z-index: 6;
+}
+
+body.theme-neon .stone.winning-stone {
+    border-color: #00ff66;
+    box-shadow: 0 0 20px #00ff66, inset 0 0 10px rgba(255,255,255,0.8);
+}
+
+/* Place stone scale animation */
+@keyframes placeStone {
+    0% {
+        transform: scale(0);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Pulse animation for thinking & last move */
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(0.85);
+        opacity: 0.5;
+    }
+}
+
+@keyframes pulseGlow {
+    0%, 100% {
+        transform: translate(-50%, -50%) scale(1);
+        box-shadow: 0 0 4px currentColor;
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.4);
+        box-shadow: 0 0 12px currentColor;
+    }
+}
+
+/* Winning stones pulse animation */
+@keyframes winPulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+    100% {
+        transform: scale(1.1);
+        box-shadow: 0 0 25px var(--accent);
+    }
+}
+
+/* ==========================================================================
+   MODAL / POPUP DIALOG
+   ========================================================================== */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(9, 10, 21, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.modal-content {
+    width: 90%;
+    max-width: 420px;
+    padding: 32px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    transform: scale(0.9);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.modal-overlay.active .modal-content {
+    transform: scale(1);
+}
+
+.modal-glow {
+    position: absolute;
+    top: -20%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, var(--accent) 0%, rgba(99, 102, 241, 0) 70%);
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.modal-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin-bottom: 12px;
+    z-index: 1;
+    position: relative;
+}
+
+.modal-message {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+    z-index: 1;
+    position: relative;
+    line-height: 1.5;
+}
+
+.modal-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    z-index: 1;
+    position: relative;
+}
+
+/* ==========================================================================
+   PARTICLE FX (落子與獲勝特效)
+   ========================================================================== */
+
+.particle {
+    position: absolute;
+    pointer-events: none;
+    z-index: 10;
+    border-radius: 50%;
+    animation: particleAnimation 0.6s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+}
+
+@keyframes particleAnimation {
+    0% {
+        transform: translate(0, 0) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(var(--tx), var(--ty)) scale(0);
+        opacity: 0;
+    }
+}
+
+/* ==========================================================================
+   THREAT HINTS (活三、四子警告閃爍)
+   ========================================================================== */
+
+.threat-ring {
+    position: absolute;
+    width: 60%;
+    height: 60%;
+    border-radius: 50%;
+    border: 2px dashed #f59e0b; /* Amber orange warning */
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+    animation: pulseThreat 1.2s infinite ease-in-out;
+    pointer-events: none;
+    z-index: 3;
+}
+
+body.theme-neon .threat-ring {
+    border-color: #ff3366; /* Neon hot pink */
+    box-shadow: 0 0 12px rgba(255, 51, 102, 0.6);
+}
+
+body.theme-wood .threat-ring {
+    border-color: #d97706; /* Darker warm brown/orange */
+    box-shadow: 0 0 8px rgba(217, 119, 6, 0.4);
+}
+
+@keyframes pulseThreat {
+    0%, 100% {
+        transform: scale(0.75);
+        opacity: 0.3;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 1;
+    }
+}
+
+/* ==========================================================================
+   RENJU FORBIDDEN MOVES (禁手警告樣式)
+   ========================================================================== */
+
+.cell.forbidden:not(.has-stone):hover {
+    cursor: not-allowed;
+}
+
+/* 禁手點懸停時顯示紅色警告棋子 */
+.cell.forbidden:not(.has-stone):hover .hover-preview.black {
+    opacity: 0.8 !important;
+    background: rgba(239, 68, 68, 0.4) !important;
+    border: 1.5px solid rgba(239, 68, 68, 0.9) !important;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.6) !important;
+    transform: scale(1) !important;
+}
+
+/* 霓虹主題下的禁手點發光效果 */
+body.theme-neon .cell.forbidden:not(.has-stone):hover .hover-preview.black {
+    background: rgba(255, 51, 102, 0.4) !important;
+    border-color: #ff3366 !important;
+    box-shadow: 0 0 15px #ff3366 !important;
+}
+
+/* AI 思考中狀態的回合指示燈強化動畫 */
+@keyframes pulseGlowThinking {
+    0%, 100% {
+        box-shadow: 0 0 8px currentColor;
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        box-shadow: 0 0 25px currentColor, 0 0 40px currentColor;
+        transform: scale(1.25);
+        opacity: 0.75;
+    }
+}
+
+.turn-dot.thinking {
+    animation: pulseGlowThinking 1.1s infinite ease-in-out !important;
+}

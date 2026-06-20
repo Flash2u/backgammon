@@ -1,0 +1,626 @@
+/**
+ * ai.js
+ * 五子棋 AI 核心演算法 - 支援多線程與 Zobrist 雜湊置換表
+ * 同時支援瀏覽器主執行緒與 Web Worker 背景執行緒
+ */
+
+(function(global) {
+    const BOARD_SIZE = 15;
+    const SEGMENTS = [];
+    const CELL_TO_SEGMENTS = Array.from({ length: BOARD_SIZE }, () =>
+        Array.from({ length: BOARD_SIZE }, () => [])
+    );
+
+    // Zobrist 雜湊隨機數表
+    const ZOBRIST_TABLE = Array.from({ length: BOARD_SIZE }, () =>
+        Array.from({ length: BOARD_SIZE }, () => [0, 0, 0])
+    );
+    // 置換表 (Transposition Table)
+    const TRANSPOSITION_TABLE = new Map();
+
+    const EXACT = 0;
+    const LOWERBOUND = 1;
+    const UPPERBOUND = 2;
+
+    // ==========================================================================
+    // 預先計算五子線段與初始化 Zobrist Table
+    // ==========================================================================
+    function precomputeSegments() {
+        // 水平
+        for (let r = 0; r < BOARD_SIZE; r++) {
+            for (let c = 0; c <= BOARD_SIZE - 5; c++) {
+                SEGMENTS.push([[r, c], [r, c+1], [r, c+2], [r, c+3], [r, c+4]]);
+            }
+        }
+        // 垂直
+        for (let c = 0; c < BOARD_SIZE; c++) {
+            for (let r = 0; r <= BOARD_SIZE - 5; r++) {
+                SEGMENTS.push([[r, c], [r+1, c], [r+2, c], [r+3, c], [r+4, c]]);
+            }
+        }
+        // 斜下 (\)
+        for (let r = 0; r <= BOARD_SIZE - 5; r++) {
+            for (let c = 0; c <= BOARD_SIZE - 5; c++) {
+                SEGMENTS.push([[r, c], [r+1, c+1], [r+2, c+2], [r+3, c+3], [r+4, c+4]]);
+            }
+        }
+        // 斜上 (/)
+        for (let r = 4; r < BOARD_SIZE; r++) {
+            for (let c = 0; c <= BOARD_SIZE - 5; c++) {
+                SEGMENTS.push([[r, c], [r-1, c+1], [r-2, c+2], [r-3, c+3], [r-4, c+4]]);
+            }
+        }
+
+        // 建立格子到線段的索引對照
+        for (let i = 0; i < SEGMENTS.length; i++) {
+            const seg = SEGMENTS[i];
+            for (let j = 0; j < 5; j++) {
+                const [r, c] = seg[j];
+                CELL_TO_SEGMENTS[r][c].push(i);
+            }
+        }
+    }
+
+    function initZobrist() {
+        // 使用環境適配的隨機數生成器
+        const cryptoObj = typeof crypto !== 'undefined' ? crypto : null;
+        for (let r = 0; r < BOARD_SIZE; r++) {
+            for (let c = 0; c < BOARD_SIZE; c++) {
+                for (let color = 1; color <= 2; color++) {
+                    if (cryptoObj && cryptoObj.getRandomValues) {
+                        const arr = new Uint32Array(1);
+                        cryptoObj.getRandomValues(arr);
+                        ZOBRIST_TABLE[r][c][color] = arr[0];
+                    } else {
+                        ZOBRIST_TABLE[r][c][color] = Math.floor(Math.random() * 0xFFFFFFFF);
+                    }
+                }
+            }
+        }
+    }
+
+    precomputeSegments();
+    initZobrist();
+
+    // 計算整張棋盤目前的 Zobrist Hashing 值
+    function computeBoardHash(board) {
+        let hash = 0;
+        for (let r = 0; r < BOARD_SIZE; r++) {
+            for (let c = 0; c < BOARD_SIZE; c++) {
+                const val = board[r][c];
+                if (val !== 0) {
+                    hash ^= ZOBRIST_TABLE[r][c][val];
+                }
+            }
+        }
+        return hash;
+    }
+
+    // ==========================================================================
+    // 基礎勝負判定 (快取優化)
+    // ==========================================================================
+    function checkWinFromPos(board, r, c) {
+        const color = board[r][c];
+        if (color === 0) return false;
+
+        const dirs = [[0, 1], [1, 0], [1, 1], [1, -1]];
+        for (let d = 0; d < dirs.length; d++) {
+            const [dr, dc] = dirs[d];
+            let count = 1;
+
+            let nr = r + dr; let nc = c + dc;
+            while (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && board[nr][nc] === color) {
+                count++; nr += dr; nc += dc;
+            }
+
+            nr = r - dr; nc = c - dc;
+            while (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && board[nr][nc] === color) {
+                count++; nr -= dr; nc -= dc;
+            }
+
+            if (count >= 5) return true;
+        }
+        return false;
+    }
+
+    // ==========================================================================
+    // 禁手規則檢測 (Renju Rules) - 僅適用於黑棋 (1)
+    // ==========================================================================
+    function checkForbidden(board, r, c, color) {
+        if (color !== 1) return false; // 只有黑棋限制禁手
+
+        // 模擬黑棋落子
+        board[r][c] = 1;
+
+        let overline = false;
+        let fourCount = 0;
+        let liveThreeCount = 0;
+
+        const dirs = [
+            [0, 1],   // 水平
+            [1, 0],   // 垂直
+            [1, 1],   // 斜下 \
+            [1, -1]   // 斜上 /
+        ];
+
+        // 1. 檢查長連 (Overline) - 黑棋連六顆子以上
+        for (let d = 0; d < dirs.length; d++) {
+            const [dr, dc] = dirs[d];
+            let count = 1;
+
+            let nr = r + dr; let nc = c + dc;
+            while (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && board[nr][nc] === 1) {
+                count++; nr += dr; nc += dc;
+            }
+
+            nr = r - dr; nc = c - dc;
+            while (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && board[nr][nc] === 1) {
+                count++; nr -= dr; nc -= dc;
+            }
+
+            if (count >= 6) {
+                overline = true;
+                break;
+            }
+        }
+
+        if (overline) {
+            board[r][c] = 0; // 復原
+            return "overline"; // 長連禁手
+        }
+
+        // 2. 檢查雙四 (Double Four)
+        // 四的定義：在此方向填入黑子能完成五連子。
+        // 我們檢查該方向上距離 (r, c) 在 4 步以內的空格，若在其餘空格落黑子能贏，則構成四。
+        for (let d = 0; d < dirs.length; d++) {
+            const [dr, dc] = dirs[d];
+            let winSpots = new Set();
+
+            for (let i = -4; i <= 4; i++) {
+                if (i === 0) continue;
+                const nr = r + dr * i;
+                const nc = c + dc * i;
+                if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && board[nr][nc] === 0) {
+                    board[nr][nc] = 1;
+                    const completes5 = checkWinFromPos(board, nr, nc);
+                    board[nr][nc] = 0;
+                    if (completes5) {
+                        winSpots.add(`${nr},${nc}`);
+                    }
+                }
+            }
+
+            if (winSpots.size > 0) {
+                fourCount++;
+            }
+        }
+
+        if (fourCount >= 2) {
+            board[r][c] = 0; // 復原
+            return "double_four"; // 雙四禁手
+        }
+
+        // 3. 檢查雙三 (Double Three)
+        // 活三的定義：落子後，可以在該方向上形成「活四」。
+        // 我們檢查此方向上其餘空格 (er, ec)，若在此格落子會形成活四，即代表原位置 (r, c) 與該格連線在當前方向為活三。
+        for (let d = 0; d < dirs.length; d++) {
+            const [dr, dc] = dirs[d];
+            let formsLiveFour = false;
+
+            for (let i = -4; i <= 4; i++) {
+                if (i === 0) continue;
+                const nr = r + dr * i;
+                const nc = c + dc * i;
+                if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && board[nr][nc] === 0) {
+                    board[nr][nc] = 1;
+                    const isLive4 = createsLiveFourInDirection(board, nr, nc, dr, dc, 1);
+                    board[nr][nc] = 0;
+
+                    if (isLive4) {
+                        formsLiveFour = true;
+                        break;
+                    }
+                }
+            }
+
+            if (formsLiveFour) {
+                liveThreeCount++;
+            }
+        }
+
+        board[r][c] = 0; // 復原
+
+        if (liveThreeCount >= 2) {
+            return "double_three"; // 雙三禁手
+        }
+
+        return false;
+    }
+
+    // 檢查在某方向上落子是否會形成活四 (兩端皆空且連續四子)
+    function createsLiveFourInDirection(board, r, c, dr, dc, color) {
+        let startR = r; let startC = c;
+        while (startR - dr >= 0 && startR - dr < BOARD_SIZE && startC - dc >= 0 && startC - dc < BOARD_SIZE && board[startR - dr][startC - dc] === color) {
+            startR -= dr; startC -= dc;
+        }
+
+        let endR = r; let endC = c;
+        while (endR + dr >= 0 && endR + dr < BOARD_SIZE && endC + dc >= 0 && endC + dc < BOARD_SIZE && board[endR + dr][endC + dc] === color) {
+            endR += dr; endC += dc;
+        }
+
+        let count = 0;
+        if (dr !== 0) {
+            count = Math.abs(endR - startR) / dr + 1;
+        } else {
+            count = Math.abs(endC - startC) / dc + 1;
+        }
+
+        if (count === 4) {
+            const beforeR = startR - dr; const beforeC = startC - dc;
+            const afterR = endR + dr; const afterC = endC + dc;
+
+            const beforeEmpty = beforeR >= 0 && beforeR < BOARD_SIZE && beforeC >= 0 && beforeC < BOARD_SIZE && board[beforeR][beforeC] === 0;
+            const afterEmpty = afterR >= 0 && afterR < BOARD_SIZE && afterC >= 0 && afterC < BOARD_SIZE && board[afterR][afterC] === 0;
+
+            if (beforeEmpty && afterEmpty) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // ==========================================================================
+    // 局勢評估與評分 (Heuristic Scoring)
+    // ==========================================================================
+    function evaluateBoard(board, aiColor) {
+        const playerColor = 3 - aiColor;
+        let score = 0;
+
+        for (let i = 0; i < SEGMENTS.length; i++) {
+            const seg = SEGMENTS[i];
+            let aiCount = 0;
+            let playerCount = 0;
+
+            for (let j = 0; j < 5; j++) {
+                const val = board[seg[j][0]][seg[j][1]];
+                if (val === aiColor) aiCount++;
+                else if (val === playerColor) playerCount++;
+            }
+
+            if (aiCount > 0 && playerCount > 0) continue;
+
+            if (aiCount > 0) {
+                if (aiCount === 5) score += 10000000;
+                else if (aiCount === 4) score += 120000;
+                else if (aiCount === 3) score += 2000;
+                else if (aiCount === 2) score += 200;
+                else if (aiCount === 1) score += 20;
+            } else if (playerCount > 0) {
+                if (playerCount === 5) score -= 8000000;
+                else if (playerCount === 4) score -= 600000; // 防守權重提高
+                else if (playerCount === 3) score -= 15000;  // 活三防守提高
+                else if (playerCount === 2) score -= 150;
+                else if (playerCount === 1) score -= 15;
+            }
+        }
+        return score;
+    }
+
+    function getImmediateScore(board, r, c, color) {
+        const oppColor = 3 - color;
+        let score = 0;
+        const segIndices = CELL_TO_SEGMENTS[r][c];
+
+        for (let i = 0; i < segIndices.length; i++) {
+            const seg = SEGMENTS[segIndices[i]];
+            let myCount = 0;
+            let oppCount = 0;
+
+            for (let j = 0; j < 5; j++) {
+                const val = board[seg[j][0]][seg[j][1]];
+                if (val === color) myCount++;
+                else if (val === oppColor) oppCount++;
+            }
+
+            if (myCount > 0 && oppCount > 0) continue;
+
+            if (oppCount === 0) {
+                if (myCount === 4) score += 50000;
+                else if (myCount === 3) score += 5000;
+                else if (myCount === 2) score += 500;
+                else score += 40;
+            }
+            if (myCount === 0) {
+                if (oppCount === 4) score += 40000;
+                else if (oppCount === 3) score += 4000;
+                else if (oppCount === 2) score += 300;
+                else score += 20;
+            }
+        }
+        return score;
+    }
+
+    // 獲取現有棋子周圍 2 格範圍內的空格作為候選點
+    function getCandidates(board) {
+        const candidates = [];
+        for (let r = 0; r < BOARD_SIZE; r++) {
+            for (let c = 0; c < BOARD_SIZE; c++) {
+                if (board[r][c] === 0) {
+                    let hasNeighbor = false;
+                    const rStart = Math.max(0, r - 2);
+                    const rEnd = Math.min(BOARD_SIZE - 1, r + 2);
+                    const cStart = Math.max(0, c - 2);
+                    const cEnd = Math.min(BOARD_SIZE - 1, c + 2);
+
+                    for (let nr = rStart; nr <= rEnd; nr++) {
+                        for (let nc = cStart; nc <= cEnd; nc++) {
+                            if (board[nr][nc] !== 0) {
+                                hasNeighbor = true;
+                                break;
+                            }
+                        }
+                        if (hasNeighbor) break;
+                    }
+
+                    if (hasNeighbor) {
+                        candidates.push({ r, c });
+                    }
+                }
+            }
+        }
+        if (candidates.length === 0) {
+            candidates.push({ r: 7, c: 7 });
+        }
+        return candidates;
+    }
+
+    // ==========================================================================
+    // Minimax 搜尋與 Alpha-Beta 剪枝 (帶有置換表功能)
+    // ==========================================================================
+    function minimax(board, depth, alpha, beta, isMaximizing, aiColor, lastR, lastC, hash, rulesEnabled) {
+        const oppColor = 3 - aiColor;
+        const originalAlpha = alpha;
+
+        // 查詢置換表 (TT)
+        const ttEntry = TRANSPOSITION_TABLE.get(hash);
+        if (ttEntry && ttEntry.depth >= depth) {
+            if (ttEntry.flag === EXACT) {
+                return ttEntry.score;
+            } else if (ttEntry.flag === LOWERBOUND) {
+                alpha = Math.max(alpha, ttEntry.score);
+            } else if (ttEntry.flag === UPPERBOUND) {
+                beta = Math.min(beta, ttEntry.score);
+            }
+            if (alpha >= beta) {
+                return ttEntry.score;
+            }
+        }
+
+        // 葉節點勝負檢查
+        if (lastR !== undefined && lastC !== undefined) {
+            if (checkWinFromPos(board, lastR, lastC)) {
+                return isMaximizing ? (-100000000 + (5 - depth)) : (100000000 - (5 - depth));
+            }
+        }
+
+        if (depth === 0) {
+            return evaluateBoard(board, aiColor);
+        }
+
+        const candidates = getCandidates(board);
+        if (candidates.length === 0) return 0;
+
+        const activeColor = isMaximizing ? aiColor : oppColor;
+        const scoredCandidates = [];
+
+        for (let i = 0; i < candidates.length; i++) {
+            const pos = candidates[i];
+
+            // 禁手規則啟用且當前模擬落子方為黑棋 (1)，檢查禁手
+            if (rulesEnabled && activeColor === 1) {
+                if (checkForbidden(board, pos.r, pos.c, 1)) {
+                    continue; // 禁手點，黑棋不能下，直接排除候選
+                }
+            }
+
+            const score = getImmediateScore(board, pos.r, pos.c, aiColor) + 
+                          getImmediateScore(board, pos.r, pos.c, oppColor) * 1.15;
+            scoredCandidates.push({ r: pos.r, c: pos.c, score });
+        }
+
+        if (scoredCandidates.length === 0) {
+            // 黑棋無棋可下（所有點皆為禁手點），被動輸局
+            return isMaximizing ? -90000000 : 90000000;
+        }
+
+        // 排序候選點以加速剪枝
+        scoredCandidates.sort((a, b) => b.score - a.score);
+
+        let bestMove = null;
+        if (isMaximizing) {
+            let maxEval = -Infinity;
+            for (let i = 0; i < scoredCandidates.length; i++) {
+                const move = scoredCandidates[i];
+                board[move.r][move.c] = aiColor;
+                const nextHash = hash ^ ZOBRIST_TABLE[move.r][move.c][aiColor];
+                const evalVal = minimax(board, depth - 1, alpha, beta, false, aiColor, move.r, move.c, nextHash, rulesEnabled);
+                board[move.r][move.c] = 0; // 復原
+
+                if (evalVal > maxEval) {
+                    maxEval = evalVal;
+                    bestMove = move;
+                }
+                alpha = Math.max(alpha, evalVal);
+                if (beta <= alpha) break; // Beta 剪枝
+            }
+
+            // 將結果寫入置換表
+            let flag = EXACT;
+            if (maxEval <= originalAlpha) flag = UPPERBOUND;
+            else if (maxEval >= beta) flag = LOWERBOUND;
+            TRANSPOSITION_TABLE.set(hash, { depth, score: maxEval, flag, bestMove });
+
+            return maxEval;
+        } else {
+            let minEval = Infinity;
+            for (let i = 0; i < scoredCandidates.length; i++) {
+                const move = scoredCandidates[i];
+                board[move.r][move.c] = oppColor;
+                const nextHash = hash ^ ZOBRIST_TABLE[move.r][move.c][oppColor];
+                const evalVal = minimax(board, depth - 1, alpha, beta, true, aiColor, move.r, move.c, nextHash, rulesEnabled);
+                board[move.r][move.c] = 0; // 復原
+
+                if (evalVal < minEval) {
+                    minEval = evalVal;
+                    bestMove = move;
+                }
+                beta = Math.min(beta, evalVal);
+                if (beta <= alpha) break; // Alpha 剪枝
+            }
+
+            // 將結果寫入置換表
+            let flag = EXACT;
+            if (minEval <= originalAlpha) flag = UPPERBOUND;
+            else if (minEval >= beta) flag = LOWERBOUND;
+            TRANSPOSITION_TABLE.set(hash, { depth, score: minEval, flag, bestMove });
+
+            return minEval;
+        }
+    }
+
+    // ==========================================================================
+    // 對外 API
+    // ==========================================================================
+    const GomokuAI = {
+        /**
+         * 檢查黑棋在指定位置落子是否為禁手
+         * @param {Array} board 15x15 棋盤
+         * @param {Number} r 列
+         * @param {Number} c 行
+         * @param {Number} color 顏色 (1: 黑, 2: 白)
+         * @returns {String|Boolean} 禁手類型或 false
+         */
+        checkForbidden(board, r, c, color) {
+            return checkForbidden(board, r, c, color);
+        },
+
+        /**
+         * 獲取最佳落子位置
+         * @param {Array} board 15x15 棋盤
+         * @param {Number} aiColor AI顏色 (1: 黑, 2: 白)
+         * @param {String} difficulty 難度
+         * @param {Boolean} rulesEnabled 是否開啟禁手
+         * @returns {Object} 最佳落子座標 {r, c}
+         */
+        getBestMove(board, aiColor, difficulty, rulesEnabled = false) {
+            const playerColor = 3 - aiColor;
+            const candidates = getCandidates(board);
+
+            // 1. 簡單難度 (Easy)
+            if (difficulty === 'easy') {
+                const scoredCandidates = [];
+                for (let i = 0; i < candidates.length; i++) {
+                    const pos = candidates[i];
+                    if (rulesEnabled && aiColor === 1) {
+                        if (checkForbidden(board, pos.r, pos.c, 1)) continue;
+                    }
+                    const score = getImmediateScore(board, pos.r, pos.c, aiColor) + 
+                                  getImmediateScore(board, pos.r, pos.c, playerColor) * 0.8;
+                    scoredCandidates.push({ r: pos.r, c: pos.c, score });
+                }
+
+                if (scoredCandidates.length === 0) return candidates[0];
+
+                if (Math.random() < 0.35) {
+                    return scoredCandidates[Math.floor(Math.random() * scoredCandidates.length)];
+                }
+                scoredCandidates.sort((a, b) => b.score - a.score);
+                const pool = Math.min(scoredCandidates.length, 5);
+                return scoredCandidates[Math.floor(Math.random() * pool)];
+            }
+
+            // 2. 中等難度 (Medium)
+            if (difficulty === 'medium') {
+                const scoredCandidates = [];
+                for (let i = 0; i < candidates.length; i++) {
+                    const pos = candidates[i];
+                    if (rulesEnabled && aiColor === 1) {
+                        if (checkForbidden(board, pos.r, pos.c, 1)) continue;
+                    }
+                    const score = getImmediateScore(board, pos.r, pos.c, aiColor) + 
+                                  getImmediateScore(board, pos.r, pos.c, playerColor) * 1.15;
+                    scoredCandidates.push({ r: pos.r, c: pos.c, score });
+                }
+
+                if (scoredCandidates.length === 0) return candidates[0];
+
+                scoredCandidates.sort((a, b) => b.score - a.score);
+                const maxVal = scoredCandidates[0].score;
+                const pool = scoredCandidates.filter(item => item.score === maxVal);
+                return pool[Math.floor(Math.random() * pool.length)];
+            }
+
+            // 3. 困難難度 (Hard)：採用 Minimax 搭配置換表，搜尋深度提升至 4 步 (depth=3)
+            if (difficulty === 'hard') {
+                let stoneCount = 0;
+                for (let r = 0; r < BOARD_SIZE; r++) {
+                    for (let c = 0; c < BOARD_SIZE; c++) {
+                        if (board[r][c] !== 0) stoneCount++;
+                    }
+                }
+                // 開局第一手落天元
+                if (stoneCount === 0) {
+                    return { r: 7, c: 7 };
+                }
+
+                // 清空本輪置換表快取
+                TRANSPOSITION_TABLE.clear();
+
+                const hash = computeBoardHash(board);
+                let bestMove = null;
+                let bestVal = -Infinity;
+
+                const scoredCandidates = [];
+                for (let i = 0; i < candidates.length; i++) {
+                    const pos = candidates[i];
+                    if (rulesEnabled && aiColor === 1) {
+                        if (checkForbidden(board, pos.r, pos.c, 1)) continue;
+                    }
+                    const score = getImmediateScore(board, pos.r, pos.c, aiColor) + 
+                                  getImmediateScore(board, pos.r, pos.c, playerColor) * 1.25;
+                    scoredCandidates.push({ r: pos.r, c: pos.c, score });
+                }
+
+                if (scoredCandidates.length === 0) return candidates[0];
+
+                scoredCandidates.sort((a, b) => b.score - a.score);
+                
+                // 置換表加成下，前 20 個候選點搜尋 4 步 (depth=3，AI-Player-AI-Player)
+                const limit = Math.min(scoredCandidates.length, 20);
+
+                for (let i = 0; i < limit; i++) {
+                    const move = scoredCandidates[i];
+                    board[move.r][move.c] = aiColor;
+                    const nextHash = hash ^ ZOBRIST_TABLE[move.r][move.c][aiColor];
+                    
+                    // depth = 3 (搜尋 4 層：當前層 + 下面 3 層遞迴)
+                    const val = minimax(board, 3, -Infinity, Infinity, false, aiColor, move.r, move.c, nextHash, rulesEnabled);
+                    board[move.r][move.c] = 0; // 復原
+
+                    if (val > bestVal) {
+                        bestVal = val;
+                        bestMove = move;
+                    }
+                }
+
+                return bestMove || scoredCandidates[0];
+            }
+
+            return candidates[0];
+        }
+    };
+
+    global.GomokuAI = GomokuAI;
+
+})(typeof window !== 'undefined' ? window : self);

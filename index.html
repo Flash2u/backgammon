@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>極致美學五子棋 - Cyber Gomoku</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts: Inter & Outfit for modern look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body class="theme-neon">
+    <div class="app-container">
+        <!-- Background decorative elements for premium visual feel -->
+        <div class="bg-glow glow-1"></div>
+        <div class="bg-glow glow-2"></div>
+
+        <header class="app-header">
+            <h1 class="app-title">CYBER<span>GOMOKU</span></h1>
+            <p class="app-subtitle">霓虹五子棋對決</p>
+        </header>
+
+        <main class="game-layout">
+            <!-- Sidebar: Control Panel and Stats -->
+            <section class="sidebar-panel">
+                <!-- Status Card -->
+                <div class="glass-card status-card">
+                    <h2 class="card-title">遊戲狀態</h2>
+                    <div class="status-indicator">
+                        <div class="turn-dot current-black"></div>
+                        <span id="status-text">準備就緒，請選擇模式開始</span>
+                    </div>
+                    <div class="timer-display">
+                        <span class="timer-icon">⏱️</span>
+                        <span id="game-timer">00:00</span>
+                    </div>
+                </div>
+
+                <!-- Setup Card -->
+                <div class="glass-card config-card">
+                    <h2 class="card-title">遊戲設定</h2>
+                    
+                    <div class="form-group">
+                        <label>對戰模式</label>
+                        <div class="segmented-control" id="mode-select">
+                            <button class="active" data-mode="ai">人機對戰</button>
+                            <button data-mode="pvp">雙人對決</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group" id="difficulty-group">
+                        <label>AI 難度</label>
+                        <div class="segmented-control" id="difficulty-select">
+                            <button data-diff="easy">簡單</button>
+                            <button class="active" data-diff="medium">中等</button>
+                            <button data-diff="hard">困難</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>視覺風格</label>
+                        <div class="theme-selector">
+                            <button class="theme-btn btn-neon active" data-theme="neon" title="暗黑霓虹"></button>
+                            <button class="theme-btn btn-wood" data-theme="wood" title="經典木紋"></button>
+                            <button class="theme-btn btn-slate" data-theme="slate" title="極簡雅緻"></button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>威脅提示 (活三/四子)</label>
+                        <div class="segmented-control" id="hint-select">
+                            <button class="active" data-hint="on">開啟</button>
+                            <button data-hint="off">關閉</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>規則設定</label>
+                        <div class="segmented-control" id="rules-select">
+                            <button class="active" data-rules="standard">標準規則</button>
+                            <button data-rules="renju">禁手規則</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Operations Card -->
+                <div class="glass-card ops-card">
+                    <button id="btn-start" class="btn-primary">重新開始</button>
+                    <div class="btn-row">
+                        <button id="btn-undo" class="btn-secondary" disabled>
+                            <span class="btn-icon">↩️</span> 悔棋
+                        </button>
+                        <button id="btn-sound" class="btn-secondary">
+                            <span class="btn-icon" id="sound-icon">🔊</span> 音效: 開
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Statistics Card -->
+                <div class="glass-card stats-card">
+                    <h2 class="card-title">對戰數據</h2>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-label" id="player1-label">黑棋勝</span>
+                            <span class="stat-value" id="stat-p1-wins">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label" id="player2-label">AI勝</span>
+                            <span class="stat-value" id="stat-p2-wins">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">平局數</span>
+                            <span class="stat-value" id="stat-draws">0</span>
+                        </div>
+                    </div>
+                    <button id="btn-clear-stats" class="btn-link">清除數據</button>
+                </div>
+            </section>
+
+            <!-- Game Board View -->
+            <section class="board-container">
+                <div class="board-wrapper">
+                    <!-- The Gomoku Board -->
+                    <div id="gomoku-board" class="gomoku-board"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Win Modal (Popup Dialog) -->
+    <div class="modal-overlay" id="win-modal">
+        <div class="glass-card modal-content">
+            <div class="modal-glow"></div>
+            <h2 id="modal-title" class="modal-title">恭喜獲勝！</h2>
+            <p id="modal-message" class="modal-message">黑子五子連珠，贏得本局！</p>
+            <div class="modal-actions">
+                <button id="btn-modal-restart" class="btn-primary">再玩一局</button>
+                <button id="btn-modal-close" class="btn-secondary">查看棋盤</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load scripts at the end -->
+    <script src="ai.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
