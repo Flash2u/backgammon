@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>極致美學五子棋 - Cyber Gomoku</title>
-    <link rel="stylesheet" href="style.css?v=2.0.3">
+    <link rel="stylesheet" href="style.css?v=2.0.5">
     <!-- Google Fonts: Inter & Outfit for modern look -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -353,16 +353,16 @@
             <h2 class="modal-title">關於遊戲</h2>
             <div class="modal-scroll-area">
                 <p style="margin-bottom: 12px; font-weight: 600; text-align: center; font-size: 1rem; color: var(--text-primary);">🌌 Cyber Gomoku - 極致美學五子棋</p>
-                <p style="margin-bottom: 6px;"><strong>目前版本：</strong>v2.0.3</p>
+                <p style="margin-bottom: 6px;"><strong>目前版本：</strong>v2.0.5</p>
                 <p style="margin-bottom: 6px;"><strong>發布日期：</strong>2026-06-21</p>
                 <p style="margin-bottom: 12px;"><strong>開發團隊：</strong>Antigravity AI Co-Pilot & Yuki</p>
                 <hr>
-                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">🛠️ 本版本摘要 (v1.9.2)：</p>
+                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">🛠️ 本版本摘要 (v2.0.5)：</p>
                 <ul>
-                    <li>🔄 **自動重連與對局恢復**：當連線中斷時儲存棋局快照，背景 30 秒自動重新連入與無縫對局恢復。</li>
-                    <li>💓 **心跳包 Keep-Alive**：背景每 15 秒發送 ping/pong，防止局域網與 NAT 閒置超時斷線。</li>
-                    <li>💬 **線上聊天室與動態表情**：支援快捷訊息、表情符號，並配備棋盤中央 3D 浮空表情特效。</li>
-                    <li>🚨 **夾心跳三與死四警告**：優化威脅掃描演算法，支援卡在中間的空位（夾心跳三/跳四）與一端受阻的死四之強烈威脅警示。</li>
+                    <li>🌐 **消滅大廳 REST 報錯**：徹底移除已失效的 `kvdb.io` 服務，完全切換為純 WebSocket 毫秒級即時大廳，消滅 console 404 報錯。</li>
+                    <li>🔑 **PeerJS 信令金鑰認證**：補齊 PeerJS 官方大廳所需的 `key: 'peerjs'` 金鑰，解決 A 與 B 雙方無法取得 ID 且無法互通連線的致命 Bug。</li>
+                    <li>🔌 **客方連結跳轉大廳**：解決客方貼上邀請連結進入時，大廳列表卡在「大廳房間載入中...」的 Bug。</li>
+                    <li>🤖 **AI 託管狀態重整**：修正對手斷線自動啟用 AI 託管後，狀態欄文字殘留並卡在「等待對手連線...」的 Bug。</li>
                 </ul>
                 <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-secondary);">📜 歷史版本摘要：</p>
                 <details style="margin-bottom: 12px; font-size: 0.85rem; color: var(--text-secondary);">
@@ -402,8 +402,8 @@
 
     <!-- Load scripts at the end -->
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-    <script src="ai.js?v=2.0.3"></script>
-    <script type="module" src="app.js?v=2.0.3"></script>
+    <script src="ai.js?v=2.0.5"></script>
+    <script type="module" src="app.js?v=2.0.5"></script>
 </body>
 </html>
 
