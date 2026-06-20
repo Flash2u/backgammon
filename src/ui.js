@@ -1,4 +1,4 @@
-﻿import { BOARD_SIZE } from './game.js';
+﻿import { BOARD_SIZE, game } from './game.js';
 
 export const ui = {
     state: null,
@@ -235,6 +235,28 @@ export const ui = {
         });
 
         this.dom.btnModalClose.addEventListener('click', () => this.dom.winModal.classList.remove('active'));
+
+        // 匯出 SGF 棋譜 (結束 Modal)
+        if (this.dom.btnModalExport) {
+            this.dom.btnModalExport.addEventListener('click', () => {
+                if (!this.state.moveRecord || this.state.moveRecord.length === 0) {
+                    alert('目前無對局記錄，無法匯出 SGF 棋譜！');
+                    return;
+                }
+                this.downloadSGF();
+            });
+        }
+
+        // 匯出 SGF 棋譜 (復盤 Card)
+        if (this.dom.btnReplayExport) {
+            this.dom.btnReplayExport.addEventListener('click', () => {
+                if (!this.state.moveRecord || this.state.moveRecord.length === 0) {
+                    alert('目前無對局記錄，無法匯出 SGF 棋譜！');
+                    return;
+                }
+                this.downloadSGF();
+            });
+        }
 
         // P2P 邀請複製
         this.dom.btnP2PInvite.addEventListener('click', () => this.handlers.onP2PInviteClick());
@@ -987,6 +1009,33 @@ export const ui = {
             item.appendChild(btn);
             this.dom.lobbyRoomsList.appendChild(item);
         });
+    },
+
+    downloadSGF() {
+        if (typeof game === 'undefined' || !game.exportToSGF) {
+            console.error("Game core or exportToSGF is not loaded");
+            return;
+        }
+        const sgfContent = game.exportToSGF();
+        const blob = new Blob([sgfContent], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        
+        // 取得當前時間字串做為檔名一部分
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const date = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const dateStr = `${year}${month}${date}_${hours}${minutes}`;
+        
+        a.href = url;
+        a.download = `CyberGomoku_${dateStr}.sgf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     },
 
     // ==========================================================================
