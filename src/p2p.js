@@ -48,6 +48,10 @@ export const p2p = {
         callbacks.onStatusChange('連線信令伺服器中...');
         peer = new Peer(null, {
             debug: 1,
+            host: '0.peerjs.com',
+            port: 443,
+            secure: true,
+            path: '/',
             config: {
                 iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' },
@@ -61,7 +65,9 @@ export const p2p = {
 
         peer.on('open', (id) => {
             callbacks.onConnected(id);
-            callbacks.onStatusChange('等待對手連線...', 'var(--accent-primary)');
+            if (!p2pConn && p2pMyColor !== 2) {
+                callbacks.onStatusChange('等待對手連線...', 'var(--accent-primary)');
+            }
         });
 
         peer.on('disconnected', () => {
