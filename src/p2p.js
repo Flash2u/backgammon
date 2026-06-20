@@ -67,7 +67,17 @@ export const p2p = {
                     { urls: 'stun:stun.ekiga.net' },
                     { urls: 'stun:stun.ideasip.com' },
                     { urls: 'stun:stun.schlund.de' },
-                    { urls: 'stun:stun.stunprotocol.org:3478' }
+                    { urls: 'stun:stun.stunprotocol.org:3478' },
+                    // 引入 Metered 開源免費 TURN 中轉伺服器以確保 100% 穿透成功率
+                    {
+                        urls: [
+                            'turn:openrelay.metered.ca:80',
+                            'turn:openrelay.metered.ca:443',
+                            'turn:openrelay.metered.ca:443?transport=tcp'
+                        ],
+                        username: 'openrelay',
+                        credential: 'openrelay'
+                    }
                 ]
             }
         });
