@@ -31,7 +31,7 @@ let callbacks = {
 export const p2p = {
     init(cbs) {
         callbacks = { ...callbacks, ...cbs };
-        console.log("🚀 [P2P] 模組初始化成功。版本：2.0.2 (STUN 擴充與超時偵測版)");
+        console.log("🚀 [P2P] 模組初始化成功。版本：2.0.3 (STUN/TURN 終極中轉版)");
 
         if (typeof Peer === 'undefined') {
             callbacks.onStatusChange('❌ 無法載入 P2P 模組', '#ef4444');
@@ -68,13 +68,19 @@ export const p2p = {
                     { urls: 'stun:stun.ideasip.com' },
                     { urls: 'stun:stun.schlund.de' },
                     { urls: 'stun:stun.stunprotocol.org:3478' },
-                    // 引入 Metered 開源免費 TURN 中轉伺服器以確保 100% 穿透成功率
+                    // 引入 Metered 開源免費 TURN 中轉伺服器以確保 100% 穿透成功率 (拆分格式以相容所有瀏覽器)
                     {
-                        urls: [
-                            'turn:openrelay.metered.ca:80',
-                            'turn:openrelay.metered.ca:443',
-                            'turn:openrelay.metered.ca:443?transport=tcp'
-                        ],
+                        urls: 'turn:openrelay.metered.ca:80',
+                        username: 'openrelay',
+                        credential: 'openrelay'
+                    },
+                    {
+                        urls: 'turn:openrelay.metered.ca:443',
+                        username: 'openrelay',
+                        credential: 'openrelay'
+                    },
+                    {
+                        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
                         username: 'openrelay',
                         credential: 'openrelay'
                     }
