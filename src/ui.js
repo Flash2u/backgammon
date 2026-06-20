@@ -1,9 +1,672 @@
 ﻿import { BOARD_SIZE, game } from './game.js';
+import { PUZZLES, getPuzzleProgress, completePuzzle } from './puzzle.js';
+
+// ==========================================================================
+// GomokuDB: IndexedDB 本地數據庫 (棋譜 & 自訂關卡)
+// ==========================================================================
+const GomokuDB = {
+    db: null,
+    
+    open() {
+        return new Promise((resolve, reject) => {
+            if (this.db) return resolve(this.db);
+            const request = indexedDB.open('GomokuDatabase', 1);
+            
+            request.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains('sgf_records')) {
+                    db.createObjectStore('sgf_records', { keyPath: 'id', autoIncrement: true });
+                }
+                if (!db.objectStoreNames.contains('custom_puzzles')) {
+                    db.createObjectStore('custom_puzzles', { keyPath: 'id', autoIncrement: true });
+                }
+            };
+            
+            request.onsuccess = (e) => {
+                this.db = e.target.result;
+                resolve(this.db);
+            };
+            
+            request.onerror = (e) => {
+                reject(e);
+            };
+        });
+    },
+    
+    async saveRecord(title, winner, movesCount, sgf) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('sgf_records', 'readwrite');
+            const store = tx.objectStore('sgf_records');
+            const data = {
+                title,
+                winner,
+                movesCount,
+                sgf,
+                date: new Date().toLocaleDateString('zh-TW', { hour12: false })
+            };
+            const req = store.add(data);
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = (e) => reject(e);
+        });
+    },
+    
+    async getAllRecords() {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('sgf_records', 'readonly');
+            const store = tx.objectStore('sgf_records');
+            const req = store.getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = (e) => reject(e);
+        });
+    },
+    
+    async deleteRecord(id) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('sgf_records', 'readwrite');
+            const store = tx.objectStore('sgf_records');
+            const req = store.delete(id);
+            req.onsuccess = () => resolve();
+            req.onerror = (e) => reject(e);
+        });
+    },
+
+    async savePuzzle(title, startBoard, firstTurn, maxMoves) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('custom_puzzles', 'readwrite');
+            const store = tx.objectStore('custom_puzzles');
+            const data = {
+                title,
+                board: startBoard,
+                firstTurn,
+                maxMoves,
+                date: new Date().toLocaleDateString('zh-TW', { hour12: false })
+            };
+            const req = store.add(data);
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = (e) => reject(e);
+        });
+    },
+
+    async getAllPuzzles() {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('custom_puzzles', 'readonly');
+            const store = tx.objectStore('custom_puzzles');
+            const req = store.getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = (e) => reject(e);
+        });
+    },
+
+    async deletePuzzle(id) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('custom_puzzles', 'readwrite');
+            const store = tx.objectStore('custom_puzzles');
+            const req = store.delete(id);
+            req.onsuccess = () => resolve();
+            req.onerror = (e) => reject(e);
+        });
+    }
+};
+
+// ==========================================================================
+// WeatherSystem: 3D 天氣模擬粒子系統 (雨滴反彈、櫻花竹葉旋轉、下雪)
+// ==========================================================================
+class WeatherSystem {
+    constructor(canvas) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.particles = [];
+        this.active = false;
+        this.theme = 'neon'; // 'neon', 'wood', 'slate'
+        
+        window.addEventListener('resize', () => this.resize());
+    }
+    
+    start(theme) {
+        this.theme = theme || 'neon';
+        this.active = true;
+        this.resize();
+        this.particles = [];
+    }
+    
+    stop() {
+        this.active = false;
+        this.particles = [];
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+    
+    resize() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+    }
+    
+    updateAndDraw() {
+        if (!this.active) return;
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+        
+        // 粒子生成
+        if (this.theme === 'neon') {
+            if (Math.random() < 0.12 && this.particles.length < 150) {
+                this.particles.push({
+                    type: 'rain',
+                    x: Math.random() * w * 1.3 - w * 0.3,
+                    y: -20,
+                    length: Math.random() * 25 + 15,
+                    vx: Math.random() * 2 + 3,
+                    vy: Math.random() * 8 + 12,
+                    color: Math.random() < 0.5 ? 'rgba(0, 242, 254, ' : 'rgba(255, 0, 127, '
+                });
+            }
+        } else if (this.theme === 'wood') {
+            if (Math.random() < 0.05 && this.particles.length < 60) {
+                const isSakura = Math.random() < 0.6;
+                this.particles.push({
+                    type: isSakura ? 'sakura' : 'bamboo',
+                    x: Math.random() * w,
+                    y: -20,
+                    size: Math.random() * 10 + 6,
+                    vx: Math.random() * 1.5 - 0.75,
+                    vy: Math.random() * 1.2 + 0.8,
+                    angle: Math.random() * Math.PI * 2,
+                    angularSpeed: Math.random() * 0.04 - 0.02,
+                    swingSpeed: Math.random() * 0.03 + 0.01,
+                    swingAmplitude: Math.random() * 1.5 + 0.5,
+                    time: Math.random() * 100
+                });
+            }
+        } else {
+            if (Math.random() < 0.2 && this.particles.length < 200) {
+                this.particles.push({
+                    type: 'snow',
+                    x: Math.random() * w,
+                    y: -10,
+                    size: Math.random() * 2.5 + 0.8,
+                    vx: Math.random() * 0.5 - 0.25,
+                    vy: Math.random() * 0.6 + 0.5,
+                    opacity: Math.random() * 0.5 + 0.3
+                });
+            }
+        }
+        
+        // 獲取棋盤位置用於雨滴彈開
+        const boardDom = document.getElementById('gomoku-board');
+        let boardRect = null;
+        if (boardDom) {
+            boardRect = boardDom.getBoundingClientRect();
+        }
+        
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            
+            if (p.type === 'rain') {
+                p.x += p.vx;
+                p.y += p.vy;
+                
+                let hitBoard = false;
+                if (boardRect && p.x >= boardRect.left && p.x <= boardRect.right) {
+                    const boardY = boardRect.top + boardRect.height * 0.55;
+                    if (p.y >= boardY && p.y - p.vy < boardY) {
+                        hitBoard = true;
+                        p.y = boardY;
+                    }
+                }
+                
+                if (hitBoard) {
+                    const sparkCount = Math.floor(Math.random() * 3) + 3;
+                    for (let j = 0; j < sparkCount; j++) {
+                        this.particles.push({
+                            type: 'spark',
+                            x: p.x,
+                            y: p.y,
+                            vx: Math.random() * 4 - 2 + p.vx * 0.2,
+                            vy: -(Math.random() * 3 + 2),
+                            size: Math.random() * 2 + 1,
+                            life: 1.0,
+                            decay: Math.random() * 0.05 + 0.05,
+                            color: p.color
+                        });
+                    }
+                    this.particles.splice(i, 1);
+                } else if (p.y > h || p.x > w) {
+                    this.particles.splice(i, 1);
+                } else {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(p.x, p.y);
+                    this.ctx.lineTo(p.x - p.vx * 0.8, p.y - p.vy * 0.8);
+                    this.ctx.lineWidth = 1.5;
+                    this.ctx.strokeStyle = p.color + '0.4)';
+                    this.ctx.stroke();
+                }
+            } else if (p.type === 'spark') {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.15;
+                p.life -= p.decay;
+                
+                if (p.life <= 0) {
+                    this.particles.splice(i, 1);
+                } else {
+                    this.ctx.beginPath();
+                    this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    this.ctx.fillStyle = p.color + p.life + ')';
+                    this.ctx.fill();
+                }
+            } else if (p.type === 'sakura' || p.type === 'bamboo') {
+                p.time += p.swingSpeed;
+                p.x += p.vx + Math.sin(p.time) * p.swingAmplitude * 0.5;
+                p.y += p.vy;
+                p.angle += p.angularSpeed;
+                
+                if (p.y > h || p.x < -20 || p.x > w + 20) {
+                    this.particles.splice(i, 1);
+                } else {
+                    this.ctx.save();
+                    this.ctx.translate(p.x, p.y);
+                    this.ctx.rotate(p.angle);
+                    const flipScaleY = Math.sin(p.time * 2);
+                    this.ctx.scale(1, flipScaleY);
+                    
+                    this.ctx.beginPath();
+                    if (p.type === 'sakura') {
+                        this.ctx.fillStyle = 'rgba(255, 183, 197, 0.7)';
+                        this.ctx.moveTo(0, 0);
+                        this.ctx.bezierCurveTo(-p.size, -p.size/2, -p.size/2, -p.size, 0, -p.size);
+                        this.ctx.bezierCurveTo(p.size/2, -p.size, p.size, -p.size/2, 0, 0);
+                    } else {
+                        this.ctx.fillStyle = 'rgba(76, 175, 80, 0.6)';
+                        this.ctx.moveTo(0, -p.size * 1.5);
+                        this.ctx.quadraticCurveTo(-p.size * 0.4, 0, 0, p.size * 1.5);
+                        this.ctx.quadraticCurveTo(p.size * 0.4, 0, 0, -p.size * 1.5);
+                    }
+                    this.ctx.fill();
+                    this.ctx.restore();
+                }
+            } else if (p.type === 'snow') {
+                p.x += p.vx + Math.sin(p.y * 0.01) * 0.2;
+                p.y += p.vy;
+                
+                if (p.y > h || p.x < -10 || p.x > w + 10) {
+                    this.particles.splice(i, 1);
+                } else {
+                    this.ctx.beginPath();
+                    this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    this.ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity})`;
+                    this.ctx.fill();
+                }
+            }
+        }
+    }
+}
+
+// ==========================================================================
+// CelebrationSystem: 獲勝 3D 物理紙屑與霓虹煙火
+// ==========================================================================
+class CelebrationSystem {
+    constructor(canvas) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.particles = [];
+        this.active = false;
+        this.fireworkTimer = null;
+        
+        window.addEventListener('resize', () => this.resize());
+    }
+    
+    start() {
+        this.active = true;
+        this.resize();
+        this.particles = [];
+        
+        const confettiCount = 100;
+        const colors = ['#ff2e63', '#00f2fe', '#00ff87', '#fff717', '#ff007f', '#39ff14', '#f59e0b'];
+        
+        for (let i = 0; i < confettiCount; i++) {
+            const side = Math.random() < 0.5 ? 'left' : 'right';
+            const startX = side === 'left' ? 40 : this.canvas.width - 40;
+            const startY = this.canvas.height - 20;
+            const angle = side === 'left' 
+                ? -(Math.random() * 45 + 30) * Math.PI / 180 
+                : -(Math.random() * 45 + 105) * Math.PI / 180;
+            const speed = Math.random() * 12 + 9;
+            
+            this.particles.push({
+                type: 'confetti',
+                x: startX,
+                y: startY,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                sizeW: Math.random() * 10 + 6,
+                sizeH: Math.random() * 6 + 4,
+                rotation: Math.random() * Math.PI * 2,
+                rotationSpeed: Math.random() * 0.2 - 0.1,
+                g: 0.18,
+                drag: 0.985
+            });
+        }
+        
+        if (this.fireworkTimer) clearInterval(this.fireworkTimer);
+        this.fireworkTimer = setInterval(() => {
+            if (this.active) this.launchFirework();
+        }, 1300);
+        
+        this.launchFirework();
+        setTimeout(() => this.launchFirework(), 500);
+    }
+    
+    stop() {
+        this.active = false;
+        if (this.fireworkTimer) {
+            clearInterval(this.fireworkTimer);
+            this.fireworkTimer = null;
+        }
+        this.particles = [];
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+    
+    resize() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+    }
+    
+    launchFirework() {
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+        const startX = Math.random() * w * 0.6 + w * 0.2;
+        const startY = h;
+        const targetY = Math.random() * h * 0.35 + h * 0.15;
+        const vy = -Math.sqrt(2 * 0.12 * (h - targetY));
+        const colors = ['#ff2e63', '#00f2fe', '#00ff87', '#fff717', '#ff007f', '#39ff14', '#f900ff'];
+        
+        this.particles.push({
+            type: 'rocket',
+            x: startX,
+            y: startY,
+            vx: Math.random() * 2 - 1,
+            vy: vy,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            g: 0.12,
+            targetY: targetY
+        });
+    }
+    
+    explode(x, y, color) {
+        const count = 50;
+        for (let i = 0; i < count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 4.5 + 2.5;
+            this.particles.push({
+                type: 'sparkle',
+                x: x,
+                y: y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                color: color,
+                size: Math.random() * 2.2 + 1.2,
+                life: 1.0,
+                decay: Math.random() * 0.02 + 0.015,
+                g: 0.07,
+                drag: 0.98
+            });
+        }
+    }
+    
+    updateAndDraw() {
+        if (!this.active) return;
+        
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            
+            if (p.type === 'confetti') {
+                p.vx *= p.drag;
+                p.vy *= p.drag;
+                p.vy += p.g;
+                p.x += p.vx;
+                p.y += p.vy;
+                p.rotation += p.rotationSpeed;
+                
+                if (p.y > this.canvas.height) {
+                    this.particles.splice(i, 1);
+                } else {
+                    this.ctx.save();
+                    this.ctx.translate(p.x, p.y);
+                    this.ctx.rotate(p.rotation);
+                    const distort = Math.cos(p.rotation * 1.5);
+                    this.ctx.fillStyle = p.color;
+                    this.ctx.fillRect(-p.sizeW/2, -p.sizeH/2, p.sizeW, p.sizeH * distort);
+                    this.ctx.restore();
+                }
+            } else if (p.type === 'rocket') {
+                p.vy += p.g;
+                p.x += p.vx;
+                p.y += p.vy;
+                
+                if (p.vy >= 0 || p.y <= p.targetY) {
+                    this.explode(p.x, p.y, p.color);
+                    this.particles.splice(i, 1);
+                } else {
+                    this.ctx.beginPath();
+                    this.ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.fill();
+                    
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(p.x, p.y);
+                    this.ctx.lineTo(p.x - p.vx * 2, p.y - p.vy * 0.4);
+                    this.ctx.lineWidth = 1.5;
+                    this.ctx.strokeStyle = p.color;
+                    this.ctx.stroke();
+                }
+            } else if (p.type === 'sparkle') {
+                p.vx *= p.drag;
+                p.vy *= p.drag;
+                p.vy += p.g;
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= p.decay;
+                
+                if (p.life <= 0) {
+                    this.particles.splice(i, 1);
+                } else {
+                    this.ctx.save();
+                    this.ctx.beginPath();
+                    this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    this.ctx.fillStyle = p.color;
+                    this.ctx.shadowBlur = 6;
+                    this.ctx.shadowColor = p.color;
+                    this.ctx.fill();
+                    this.ctx.restore();
+                }
+            }
+        }
+    }
+}
+
+// ==========================================================================
+// ThreatLaserRenderer: 活三/衝四威脅格線雷射光流
+// ==========================================================================
+class ThreatLaserRenderer {
+    constructor(canvas, boardDom) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.boardDom = boardDom;
+        this.threats = [];
+        this.animationId = null;
+        this.time = 0;
+        this.active = false;
+        
+        window.addEventListener('resize', () => this.resize());
+    }
+    
+    start() {
+        if (this.active) return;
+        this.active = true;
+        this.resize();
+        this.animate();
+    }
+    
+    stop() {
+        this.active = false;
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+        }
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+    
+    resize() {
+        const rect = this.boardDom.getBoundingClientRect();
+        this.canvas.width = rect.width;
+        this.canvas.height = rect.height;
+    }
+    
+    updateThreats(threats) {
+        this.threats = threats;
+        if (threats.some(t => t.threatLine)) {
+            this.start();
+        } else {
+            this.stop();
+        }
+    }
+    
+    animate() {
+        if (!this.active) return;
+        this.time += 0.06;
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        const cellW = this.canvas.width / BOARD_SIZE;
+        const cellH = this.canvas.height / BOARD_SIZE;
+        
+        this.threats.forEach(t => {
+            if (!t.threatLine) return;
+            const p1 = {
+                x: t.threatLine.c1 * cellW + cellW / 2,
+                y: t.threatLine.r1 * cellH + cellH / 2
+            };
+            const p2 = {
+                x: t.threatLine.c2 * cellW + cellW / 2,
+                y: t.threatLine.r2 * cellH + cellH / 2
+            };
+            
+            const color = t.isFatal ? 'rgba(255, 46, 99, ' : 'rgba(0, 242, 254, ';
+            
+            // 繪製雷射管
+            this.ctx.beginPath();
+            this.ctx.moveTo(p1.x, p1.y);
+            this.ctx.lineTo(p2.x, p2.y);
+            this.ctx.lineWidth = 6;
+            this.ctx.strokeStyle = color + '0.12)';
+            this.ctx.stroke();
+            
+            this.ctx.beginPath();
+            this.ctx.moveTo(p1.x, p1.y);
+            this.ctx.lineTo(p2.x, p2.y);
+            this.ctx.lineWidth = 1.8;
+            this.ctx.strokeStyle = color + '0.6)';
+            this.ctx.stroke();
+            
+            // 繪製能量粒子
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const ratio = (Math.sin(this.time * 2) + 1) / 2;
+            const bx = p1.x + dx * ratio;
+            const by = p1.y + dy * ratio;
+            
+            this.ctx.save();
+            const grad = this.ctx.createRadialGradient(bx, by, 1, bx, by, 10);
+            grad.addColorStop(0, '#ffffff');
+            grad.addColorStop(0.3, color + '1)');
+            grad.addColorStop(1, color + '0)');
+            
+            this.ctx.beginPath();
+            this.ctx.arc(bx, by, 10, 0, Math.PI * 2);
+            this.ctx.fillStyle = grad;
+            this.ctx.fill();
+            this.ctx.restore();
+            
+            // 粒子尾跡
+            for (let i = 0; i < 4; i++) {
+                const trailRatio = ratio - (i * 0.04 * (Math.sin(this.time * 2) > 0 ? 1 : -1));
+                const clamped = Math.max(0, Math.min(1, trailRatio));
+                const tx = p1.x + dx * clamped;
+                const ty = p1.y + dy * clamped;
+                this.ctx.beginPath();
+                this.ctx.arc(tx, ty, 2 * (1 - i / 4), 0, Math.PI * 2);
+                this.ctx.fillStyle = color + (0.4 * (1 - i / 4)) + ')';
+                this.ctx.fill();
+            }
+        });
+        
+        this.animationId = requestAnimationFrame(() => this.animate());
+    }
+}
+
+// ==========================================================================
+// DanmakuSystem: 旁觀者發言全螢幕彈幕系統
+// ==========================================================================
+class DanmakuSystem {
+    constructor(canvas) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.danmakus = [];
+        this.lanesCount = 6;
+        this.laneHeight = 36;
+        this.baseY = 90;
+    }
+    
+    addDanmaku(text, color) {
+        const w = this.canvas.width;
+        const lane = Math.floor(Math.random() * this.lanesCount);
+        const y = this.baseY + lane * this.laneHeight;
+        
+        const colors = ['#00f2fe', '#ff2e63', '#00ff87', '#fff717', '#f900ff', '#ffffff'];
+        const finalColor = color || colors[Math.floor(Math.random() * colors.length)];
+        
+        this.danmakus.push({
+            text: text,
+            x: w + 40,
+            y: y,
+            speed: Math.random() * 2 + 1.8,
+            color: finalColor,
+            font: "bold 18px 'Outfit', 'Inter', sans-serif"
+        });
+    }
+    
+    updateAndDraw() {
+        if (this.danmakus.length === 0) return;
+        
+        this.ctx.save();
+        this.danmakus.forEach(d => {
+            d.x -= d.speed;
+            this.ctx.font = d.font;
+            this.ctx.shadowBlur = 6;
+            this.ctx.shadowColor = d.color;
+            this.ctx.fillStyle = d.color;
+            this.ctx.fillText(d.text, d.x, d.y);
+            
+            this.ctx.shadowBlur = 0;
+            this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
+            this.ctx.lineWidth = 1;
+            this.ctx.strokeText(d.text, d.x, d.y);
+        });
+        this.ctx.restore();
+        
+        this.danmakus = this.danmakus.filter(d => d.x > -350);
+    }
+}
 
 export const ui = {
     state: null,
     handlers: null,
     dom: {},
+    GomokuDB,
 
     init(gameState, eventHandlers) {
         this.state = gameState;
@@ -13,6 +676,47 @@ export const ui = {
         this.createBoardGrid();
         this.bindEvents();
         this.loadSettings();
+
+        // 實例化視覺特效與數據庫
+        if (this.dom.threatCanvas) {
+            this.threatLaser = new ThreatLaserRenderer(this.dom.threatCanvas, this.dom.board);
+        }
+        if (this.dom.screenCanvas) {
+            this.weatherSystem = new WeatherSystem(this.dom.screenCanvas);
+            this.celebrationSystem = new CelebrationSystem(this.dom.screenCanvas);
+            this.danmakuSystem = new DanmakuSystem(this.dom.screenCanvas);
+            
+            const activeTheme = this.state.theme || 'neon';
+            this.weatherSystem.start(activeTheme);
+            
+            // 啟動全屏 Canvas 動畫迴圈
+            this.startScreenAnimationLoop();
+        }
+
+        // 初始化 IndexedDB
+        GomokuDB.open().then(() => {
+            console.log("GomokuDB initialized successfully.");
+            this.renderSgfLibrary();
+            this.renderPuzzleLevels(); // 同步渲染關卡
+        }).catch(err => {
+            console.error("GomokuDB initialization failed:", err);
+        });
+    },
+
+    startScreenAnimationLoop() {
+        const loop = () => {
+            if (this.dom.screenCanvas && this.weatherSystem && this.danmakuSystem) {
+                // 清理 Canvas 並統一重繪
+                this.weatherSystem.ctx.clearRect(0, 0, this.dom.screenCanvas.width, this.dom.screenCanvas.height);
+                this.weatherSystem.updateAndDraw();
+                if (this.celebrationSystem && this.celebrationSystem.active) {
+                    this.celebrationSystem.updateAndDraw();
+                }
+                this.danmakuSystem.updateAndDraw();
+            }
+            requestAnimationFrame(loop);
+        };
+        loop();
     },
 
     cacheDOM() {
@@ -111,6 +815,33 @@ export const ui = {
         this.dom.aiMonitorNps = document.getElementById('ai-monitor-nps');
         this.dom.aiMonitorScore = document.getElementById('ai-monitor-score');
         this.dom.aiMonitorPv = document.getElementById('ai-monitor-pv');
+
+        // SGF Library DOM (新增)
+        this.dom.sgfLibraryCard = document.getElementById('sgf-library-card');
+        this.dom.sgfList = document.getElementById('sgf-list');
+        this.dom.btnSgfLibrary = document.getElementById('btn-sgf-library');
+        this.dom.btnImportSgf = document.getElementById('btn-import-sgf');
+        this.dom.sgfFileInput = document.getElementById('sgf-file-input');
+        this.dom.btnExitSgfLib = document.getElementById('btn-exit-sgf-lib');
+
+        // Puzzle Editor DOM (新增)
+        this.dom.puzzleEditorCard = document.getElementById('puzzle-editor-card');
+        this.dom.btnPuzzleEditor = document.getElementById('btn-puzzle-editor');
+        this.dom.puzzleEditToolButtons = document.querySelectorAll('#puzzle-edit-tool button');
+        this.dom.puzzleEditTurnButtons = document.querySelectorAll('#puzzle-edit-turn button');
+        this.dom.puzzleEditMaxMoves = document.getElementById('puzzle-edit-max-moves');
+        this.dom.puzzleEditTitle = document.getElementById('puzzle-edit-title');
+        this.dom.btnPuzzleEditTest = document.getElementById('btn-puzzle-edit-test');
+        this.dom.btnPuzzleEditSave = document.getElementById('btn-puzzle-edit-save');
+        this.dom.btnPuzzleEditExit = document.getElementById('btn-puzzle-edit-exit');
+
+        // P2P AI Hosting DOM (新增)
+        this.dom.p2pHostingGroup = document.getElementById('p2p-hosting-group');
+        this.dom.btnP2PHosting = document.getElementById('btn-p2p-hosting');
+
+        // Canvases (新增)
+        this.dom.threatCanvas = document.getElementById('threat-canvas');
+        this.dom.screenCanvas = document.getElementById('screen-canvas');
     },
 
     createBoardGrid() {
@@ -210,9 +941,13 @@ export const ui = {
         });
 
         // 重新開始
-        this.dom.btnStart.addEventListener('click', () => this.handlers.onRestartClick());
+        this.dom.btnStart.addEventListener('click', () => {
+            if (this.celebrationSystem) this.celebrationSystem.stop();
+            this.handlers.onRestartClick();
+        });
         this.dom.btnModalRestart.addEventListener('click', () => {
             this.dom.winModal.classList.remove('active');
+            if (this.celebrationSystem) this.celebrationSystem.stop();
             this.handlers.onRestartClick();
         });
 
@@ -234,7 +969,10 @@ export const ui = {
             }
         });
 
-        this.dom.btnModalClose.addEventListener('click', () => this.dom.winModal.classList.remove('active'));
+        this.dom.btnModalClose.addEventListener('click', () => {
+            this.dom.winModal.classList.remove('active');
+            if (this.celebrationSystem) this.celebrationSystem.stop();
+        });
 
         // 匯出 SGF 棋譜 (結束 Modal)
         if (this.dom.btnModalExport) {
@@ -347,6 +1085,80 @@ export const ui = {
 
         // 模式、難度、主題、提示、規則、視角按鈕綁定
         this.bindSelectionButtons();
+
+        // P2P AI 託管按鈕 (新增)
+        if (this.dom.btnP2PHosting) {
+            this.dom.btnP2PHosting.addEventListener('click', () => {
+                if (this.handlers.onP2PHostingToggle) {
+                    this.handlers.onP2PHostingToggle();
+                }
+            });
+        }
+
+        // 棋譜庫卡片按鈕 (新增)
+        if (this.dom.btnSgfLibrary) {
+            this.dom.btnSgfLibrary.addEventListener('click', () => {
+                this.showSgfLibraryCard(true);
+            });
+        }
+        if (this.dom.btnExitSgfLib) {
+            this.dom.btnExitSgfLib.addEventListener('click', () => {
+                this.showSgfLibraryCard(false);
+            });
+        }
+        if (this.dom.btnImportSgf) {
+            this.dom.btnImportSgf.addEventListener('click', () => {
+                this.dom.sgfFileInput.click();
+            });
+        }
+        if (this.dom.sgfFileInput) {
+            this.dom.sgfFileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    this.importSGFFile(file);
+                }
+            });
+        }
+
+        // 殘局編輯器卡片按鈕 (新增)
+        if (this.dom.btnPuzzleEditor) {
+            this.dom.btnPuzzleEditor.addEventListener('click', () => {
+                this.showPuzzleEditorCard(true);
+            });
+        }
+        if (this.dom.btnPuzzleEditExit) {
+            this.dom.btnPuzzleEditExit.addEventListener('click', () => {
+                this.showPuzzleEditorCard(false);
+            });
+        }
+        if (this.dom.btnPuzzleEditTest) {
+            this.dom.btnPuzzleEditTest.addEventListener('click', () => {
+                this.testCustomPuzzle();
+            });
+        }
+        if (this.dom.btnPuzzleEditSave) {
+            this.dom.btnPuzzleEditSave.addEventListener('click', () => {
+                this.saveCustomPuzzle();
+            });
+        }
+        
+        // 殘局編輯工具/先手切換 (新增)
+        if (this.dom.puzzleEditToolButtons) {
+            this.dom.puzzleEditToolButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    this.dom.puzzleEditToolButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                });
+            });
+        }
+        if (this.dom.puzzleEditTurnButtons) {
+            this.dom.puzzleEditTurnButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    this.dom.puzzleEditTurnButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                });
+            });
+        }
     },
 
     bindSelectionButtons() {
@@ -423,6 +1235,10 @@ export const ui = {
         this.dom.themeButtons.forEach(btn => {
             btn.classList.toggle('active', btn.dataset.theme === theme);
         });
+
+        if (this.weatherSystem) {
+            this.weatherSystem.start(theme);
+        }
     },
 
     setPerspectiveView(view) {
@@ -602,11 +1418,19 @@ export const ui = {
                 cell.appendChild(ring);
             }
         });
+
+        // 觸發雷射流光特效 (新增)
+        if (this.threatLaser) {
+            this.threatLaser.updateThreats(hints);
+        }
     },
  
     clearThreatHints() {
         const rings = this.dom.board.querySelectorAll('.threat-ring');
         rings.forEach(r => r.remove());
+        if (this.threatLaser) {
+            this.threatLaser.stop();
+        }
     },
  
     updateForbiddenMoves(forbiddenList) {
@@ -837,7 +1661,7 @@ export const ui = {
         this.dom.p2pConfirmModal.classList.remove('active');
     },
 
-    showGameEndModal(winner, winningStones) {
+    showGameEndModal(winner, winningStones, isTimeout = false) {
         let titleText = '';
         let msgText = '';
 
@@ -862,12 +1686,72 @@ export const ui = {
                     titleText = '💀 遺憾落敗...';
                     msgText = `您被 [${this.getDiffName(this.state.aiDifficulty)}] AI 擊敗了，再接再厲！\n【 贏家：AI ｜ 輸家：您 (玩家) 】`;
                 }
+            } else if (this.state.gameMode === 'puzzle') {
+                if (winner === this.state.playerColor) {
+                    titleText = '🎉 殘局挑戰成功！';
+                    msgText = `恭喜您在限制步數內成功破解了此殘局！`;
+                    
+                    // 如果是內建關卡 (ID 是數值)，解鎖下一關
+                    if (typeof this.state.currentPuzzleId === 'number') {
+                        completePuzzle(this.state.currentPuzzleId);
+                    }
+                    this.renderPuzzleLevels();
+                } else {
+                    titleText = '❌ 殘局挑戰失敗';
+                    msgText = `很遺憾，您沒有成功破解此殘局，請再接再厲！`;
+                }
             } else {
                 titleText = '🏆 棋局已分！';
                 const winnerName = winner === 1 ? '先手黑棋' : '後手白棋';
                 const loserName = winner === 1 ? '後手白棋' : '先手黑棋';
                 msgText = `恭喜 ${winnerName} 贏得本場勝利！\n【 贏家：${winnerName} ｜ 輸家：${loserName} 】`;
             }
+
+            if (isTimeout) {
+                msgText += '\n(因玩家思考超時判定)';
+            }
+        }
+
+        // 獲勝時啟動 3D 慶典動畫
+        if (winner !== 0 && this.celebrationSystem) {
+            this.celebrationSystem.start();
+        }
+
+        // 自動儲存至 IndexedDB 本地棋譜庫
+        if (this.state.gameMode !== 'puzzle' && typeof game !== 'undefined' && game.exportToSGF && this.state.history && this.state.history.length > 0) {
+            const sgfContent = game.exportToSGF();
+            const dateStr = new Date().toLocaleDateString('zh-TW');
+            const timeStr = new Date().toLocaleTimeString('zh-TW', { hour12: false });
+            
+            let oppName = "AI";
+            if (this.state.gameMode === 'p2p') {
+                oppName = "遠端玩家";
+            } else if (this.state.gameMode === 'pvp') {
+                oppName = "本地雙人";
+            }
+            
+            let myName = "我";
+            if (this.state.gameMode === 'pvp') {
+                myName = "玩家1";
+                oppName = "玩家2";
+            }
+            
+            let winnerName = "平局";
+            if (winner === 1) {
+                winnerName = "黑勝";
+            } else if (winner === 2) {
+                winnerName = "白勝";
+            }
+            
+            const title = `${this.state.gameMode.toUpperCase()}_對局_${dateStr}_${timeStr} (${winnerName})`;
+            const movesCount = this.state.history.length;
+            
+            GomokuDB.saveRecord(title, winner, movesCount, sgfContent)
+                .then(() => {
+                    console.log("Automatically saved game to local database.");
+                    this.renderSgfLibrary(); // 重新渲染棋譜列表
+                })
+                .catch(e => console.error("Auto-save game failed:", e));
         }
 
         this.dom.modalTitle.innerText = titleText;
@@ -1136,6 +2020,412 @@ export const ui = {
     clearVirtualAIStones() {
         const vStones = this.dom.board.querySelectorAll('.virtual-stone');
         vStones.forEach(s => s.remove());
+    },
+
+    // ==========================================================================
+    // SGF Library & Puzzle Editor Controllers (新增)
+    // ==========================================================================
+    showSgfLibraryCard(show) {
+        if (!this.dom.sgfLibraryCard) return;
+        this.dom.sgfLibraryCard.style.display = show ? 'block' : 'none';
+        if (show) {
+            this.dom.opsCard.style.display = 'none';
+            this.dom.p2pCard.style.display = 'none';
+            this.dom.puzzleCard.style.display = 'none';
+            this.dom.replayCard.style.display = 'none';
+            if (this.dom.puzzleEditorCard) this.dom.puzzleEditorCard.style.display = 'none';
+            this.renderSgfLibrary();
+        } else {
+            const mode = this.state.gameMode;
+            this.dom.opsCard.style.display = (mode === 'ai' || mode === 'pvp') ? 'block' : 'none';
+            this.dom.p2pCard.style.display = mode === 'p2p' ? 'block' : 'none';
+            this.dom.puzzleCard.style.display = mode === 'puzzle' ? 'block' : 'none';
+        }
+    },
+
+    showPuzzleEditorCard(show) {
+        if (!this.dom.puzzleEditorCard) return;
+        this.isPuzzleEditing = show;
+        this.dom.puzzleEditorCard.style.display = show ? 'block' : 'none';
+        if (show) {
+            this.dom.opsCard.style.display = 'none';
+            this.dom.p2pCard.style.display = 'none';
+            this.dom.puzzleCard.style.display = 'none';
+            this.dom.replayCard.style.display = 'none';
+            this.dom.sgfLibraryCard.style.display = 'none';
+            
+            // 清空棋盤準備自訂編輯
+            game.reset();
+            this.renderBoard();
+            this.showP2PToast("🛠️ 進入殘局編輯模式，可點擊棋盤擺放棋子");
+        } else {
+            const mode = this.state.gameMode;
+            this.dom.opsCard.style.display = (mode === 'ai' || mode === 'pvp') ? 'block' : 'none';
+            this.dom.p2pCard.style.display = mode === 'p2p' ? 'block' : 'none';
+            this.dom.puzzleCard.style.display = mode === 'puzzle' ? 'block' : 'none';
+            game.reset();
+            this.renderBoard();
+        }
+    },
+
+    renderSgfLibrary() {
+        if (!this.dom.sgfList) return;
+        this.dom.sgfList.innerHTML = '';
+        
+        GomokuDB.getAllRecords().then(records => {
+            if (records.length === 0) {
+                this.dom.sgfList.innerHTML = '<div style="text-align: center; padding: 12px; color: var(--text-muted); font-size: 0.8rem;">目前無儲存的本地棋譜</div>';
+                return;
+            }
+            
+            records.reverse().forEach(rec => {
+                const item = document.createElement('div');
+                item.className = 'sgf-item';
+                
+                const title = document.createElement('div');
+                title.className = 'sgf-item-title';
+                title.innerText = rec.title || '未命名棋譜';
+                
+                const meta = document.createElement('div');
+                meta.className = 'sgf-item-meta';
+                
+                const winnerText = rec.winner === 1 ? '黑勝' : (rec.winner === 2 ? '白勝' : '平局');
+                meta.innerHTML = `<span>📅 ${rec.date}</span><span>${winnerText} (${rec.movesCount}手)</span>`;
+                
+                item.appendChild(title);
+                item.appendChild(meta);
+                
+                const actionRow = document.createElement('div');
+                actionRow.style.display = 'flex';
+                actionRow.style.gap = '8px';
+                actionRow.style.marginTop = '8px';
+                
+                const btnLoad = document.createElement('button');
+                btnLoad.className = 'btn-primary';
+                btnLoad.style.flex = '1';
+                btnLoad.style.fontSize = '0.75rem';
+                btnLoad.style.padding = '4px 0';
+                btnLoad.style.marginTop = '0';
+                btnLoad.innerText = '🔍 載入復盤';
+                btnLoad.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.loadSGFForReplay(rec.sgf);
+                    this.showSgfLibraryCard(false);
+                });
+                
+                const btnDel = document.createElement('button');
+                btnDel.className = 'btn-secondary';
+                btnDel.style.fontSize = '0.75rem';
+                btnDel.style.padding = '4px 8px';
+                btnDel.style.marginTop = '0';
+                btnDel.innerText = '🗑️';
+                btnDel.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (confirm(`確定要刪除棋譜「${rec.title}」嗎？`)) {
+                       GomokuDB.deleteRecord(rec.id).then(() => {
+                           this.renderSgfLibrary();
+                       });
+                    }
+                });
+                
+                actionRow.appendChild(btnLoad);
+                actionRow.appendChild(btnDel);
+                item.appendChild(actionRow);
+                
+                this.dom.sgfList.appendChild(item);
+            });
+        });
+    },
+
+    renderPuzzleLevels() {
+        if (!this.dom.puzzleLevelsList) return;
+        this.dom.puzzleLevelsList.innerHTML = '';
+        
+        const completedList = getPuzzleProgress();
+        
+        PUZZLES.forEach(level => {
+            const isUnlocked = level.id === 1 || completedList.includes(level.id - 1);
+            const isCompleted = completedList.includes(level.id);
+            
+            const item = document.createElement('div');
+            item.className = `puzzle-level-item ${isCompleted ? 'completed' : ''} ${!isUnlocked ? 'locked' : ''}`;
+            if (this.state.currentPuzzleId === level.id && this.state.gameMode === 'puzzle') {
+                item.classList.add('active');
+            }
+            
+            const name = document.createElement('div');
+            name.className = 'puzzle-level-name';
+            name.innerText = level.name;
+            
+            const status = document.createElement('div');
+            status.className = 'puzzle-level-status';
+            status.innerText = isCompleted ? '✅ 已通關' : (isUnlocked ? '🔓 可挑戰' : '🔒 未解鎖');
+            
+            item.appendChild(name);
+            item.appendChild(status);
+            
+            if (isUnlocked) {
+                item.addEventListener('click', () => {
+                    this.selectPuzzleLevel(level);
+                });
+            }
+            
+            this.dom.puzzleLevelsList.appendChild(item);
+        });
+
+        // 載入自訂關卡
+        GomokuDB.getAllPuzzles().then(customPuzzles => {
+            if (customPuzzles.length === 0) return;
+            
+            const divider = document.createElement('div');
+            divider.style.borderTop = '1px dashed var(--card-border)';
+            divider.style.margin = '12px 0 6px 0';
+            divider.style.fontSize = '0.75rem';
+            divider.style.color = 'var(--accent-primary)';
+            divider.style.textAlign = 'center';
+            divider.innerText = '🛠️ 自訂殘局關卡';
+            this.dom.puzzleLevelsList.appendChild(divider);
+            
+            customPuzzles.forEach(lvl => {
+                const item = document.createElement('div');
+                item.className = 'puzzle-level-item';
+                
+                const name = document.createElement('div');
+                name.className = 'puzzle-level-name';
+                name.innerText = lvl.title;
+                
+                const status = document.createElement('div');
+                status.className = 'puzzle-level-status';
+                status.innerText = `限 ${lvl.maxMoves} 步`;
+                
+                item.appendChild(name);
+                item.appendChild(status);
+                
+                item.addEventListener('click', () => {
+                    this.selectCustomPuzzleLevel(lvl);
+                });
+                
+                const btnDel = document.createElement('button');
+                btnDel.style.background = 'none';
+                btnDel.style.border = 'none';
+                btnDel.style.color = 'var(--text-muted)';
+                btnDel.style.cursor = 'pointer';
+                btnDel.style.fontSize = '0.75rem';
+                btnDel.innerText = '❌';
+                btnDel.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (confirm(`確定要刪除自訂關卡「${lvl.title}」嗎？`)) {
+                        GomokuDB.deletePuzzle(lvl.id).then(() => {
+                            this.renderPuzzleLevels();
+                        });
+                    }
+                });
+                item.appendChild(btnDel);
+                
+                this.dom.puzzleLevelsList.appendChild(item);
+            });
+        });
+    },
+
+    selectPuzzleLevel(level) {
+        this.state.gameMode = 'puzzle';
+        this.state.currentPuzzleId = level.id;
+        this.state.puzzleMaxMoves = level.limit;
+        this.state.puzzleMovesUsed = 0;
+        this.state.playerColor = level.playerColor;
+        
+        game.reset();
+        for (let r = 0; r < BOARD_SIZE; r++) {
+            for (let c = 0; c < BOARD_SIZE; c++) {
+                this.state.board[r][c] = 0;
+            }
+        }
+        
+        level.black.forEach(([r, c]) => {
+            this.state.board[r][c] = 1;
+        });
+        level.white.forEach(([r, c]) => {
+            this.state.board[r][c] = 2;
+        });
+        
+        this.state.currentTurn = 1; 
+        this.state.isGameOver = false;
+        
+        this.renderBoard();
+        this.dom.puzzleStatusPanel.style.display = 'block';
+        this.dom.puzzleLevelTitle.innerText = level.name;
+        this.dom.puzzleLevelDesc.innerText = level.desc;
+        this.dom.puzzleLimitText.innerText = level.limit;
+        this.dom.puzzleUsedText.innerText = 0;
+        
+        this.dom.statusText.innerText = `關卡已載入，您執 ${level.playerColor === 1 ? '黑' : '白'}棋！`;
+        
+        if (level.playerColor === 2) {
+            if (this.handlers.onAITrigger) this.handlers.onAITrigger();
+        }
+        
+        this.renderPuzzleLevels();
+    },
+
+    selectCustomPuzzleLevel(lvl) {
+        this.state.gameMode = 'puzzle';
+        this.state.currentPuzzleId = `custom_${lvl.id}`;
+        this.state.puzzleMaxMoves = lvl.maxMoves;
+        this.state.puzzleMovesUsed = 0;
+        this.state.playerColor = lvl.firstTurn;
+        
+        game.reset();
+        this.state.board = lvl.board.map(row => [...row]);
+        this.state.currentTurn = lvl.firstTurn;
+        this.state.isGameOver = false;
+        
+        this.renderBoard();
+        this.dom.puzzleStatusPanel.style.display = 'block';
+        this.dom.puzzleLevelTitle.innerText = lvl.title;
+        this.dom.puzzleLevelDesc.innerText = "自訂殘局關卡挑戰！請在限制步數內獲勝。";
+        this.dom.puzzleLimitText.innerText = lvl.maxMoves;
+        this.dom.puzzleUsedText.innerText = 0;
+        
+        this.dom.statusText.innerText = `自訂關卡已載入，您執 ${lvl.firstTurn === 1 ? '黑' : '白'}棋！`;
+        
+        if (lvl.firstTurn !== this.state.playerColor) {
+            if (this.handlers.onAITrigger) this.handlers.onAITrigger();
+        }
+        
+        this.renderPuzzleLevels();
+    },
+
+    importSGFFile(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const sgfText = e.target.result;
+            try {
+                this.loadSGFForReplay(sgfText);
+                this.showSgfLibraryCard(false);
+                this.showP2PToast("📤 成功匯入外部 SGF 棋譜並開啟復盤！");
+            } catch(err) {
+                alert("❌ SGF 檔案解析失敗，請確認檔案格式是否正確。");
+            }
+        };
+        reader.readAsText(file);
+    },
+
+    loadSGFForReplay(sgfText) {
+        const moveRecord = [];
+        const regex = /;(B|W)\[([a-o])([a-o])\]/g;
+        let match;
+        while ((match = regex.exec(sgfText)) !== null) {
+            const color = match[1] === 'B' ? 1 : 2;
+            const c = match[2].charCodeAt(0) - 97;
+            const r = match[3].charCodeAt(0) - 97;
+            moveRecord.push({ r, c, color });
+        }
+        
+        if (moveRecord.length === 0) {
+            throw new Error("No moves found");
+        }
+        
+        this.state.gameMode = 'ai';
+        this.state.isReplayMode = true;
+        this.state.moveRecord = moveRecord;
+        this.state.replayIndex = moveRecord.length;
+        
+        game.reset();
+        moveRecord.forEach(m => {
+            this.state.board[m.r][m.c] = m.color;
+        });
+        this.state.lastMove = moveRecord[moveRecord.length - 1];
+        this.state.isGameOver = true;
+        
+        this.renderBoard();
+        
+        this.dom.opsCard.style.display = 'none';
+        this.dom.puzzleCard.style.display = 'none';
+        this.dom.p2pCard.style.display = 'none';
+        this.dom.replayCard.style.display = 'block';
+        this.dom.replayStatus.innerText = `第 ${this.state.replayIndex} / ${moveRecord.length} 手`;
+        
+        this.dom.statusText.innerText = "對局復盤中，可使用按鈕分步觀看對局";
+    },
+
+    async saveCustomPuzzle() {
+        const title = this.dom.puzzleEditTitle.value.trim() || '未命名自訂關卡';
+        const maxMoves = parseInt(this.dom.puzzleEditMaxMoves.value) || 0;
+        
+        let firstTurn = 1;
+        if (this.dom.puzzleEditTurnButtons) {
+            this.dom.puzzleEditTurnButtons.forEach(btn => {
+                if (btn.classList.contains('active')) {
+                    firstTurn = parseInt(btn.dataset.turn);
+                }
+            });
+        }
+        
+        let hasStone = false;
+        for (let r = 0; r < BOARD_SIZE; r++) {
+            for (let c = 0; c < BOARD_SIZE; c++) {
+                if (this.state.board[r][c] !== 0) {
+                    hasStone = true;
+                    break;
+                }
+            }
+        }
+        
+        if (!hasStone) {
+            this.showP2PToast("⚠️ 棋盤目前為空，無法儲存殘局！", true);
+            return;
+        }
+        
+        try {
+            await GomokuDB.savePuzzle(title, this.state.board, firstTurn, maxMoves);
+            this.showP2PToast("💾 自訂關卡已儲存至本地庫！");
+            this.renderPuzzleLevels();
+        } catch (e) {
+            console.error(e);
+            this.showP2PToast("❌ 儲存關卡失敗", true);
+        }
+    },
+
+    testCustomPuzzle() {
+        const title = this.dom.puzzleEditTitle.value.trim() || '自訂測試殘局';
+        const maxMoves = parseInt(this.dom.puzzleEditMaxMoves.value) || 0;
+        
+        let firstTurn = 1;
+        if (this.dom.puzzleEditTurnButtons) {
+            this.dom.puzzleEditTurnButtons.forEach(btn => {
+                if (btn.classList.contains('active')) {
+                    firstTurn = parseInt(btn.dataset.turn);
+                }
+            });
+        }
+        
+        this.state.gameMode = 'puzzle';
+        this.state.currentPuzzleId = 'custom_test';
+        this.state.puzzleMaxMoves = maxMoves;
+        this.state.puzzleMovesUsed = 0;
+        this.state.playerColor = firstTurn;
+        
+        this.state.currentTurn = firstTurn;
+        this.state.isGameOver = false;
+        
+        this.isPuzzleEditing = false;
+        if (this.dom.puzzleEditorCard) this.dom.puzzleEditorCard.style.display = 'none';
+        this.dom.puzzleCard.style.display = 'block';
+        this.dom.puzzleStatusPanel.style.display = 'block';
+        
+        this.dom.puzzleLevelTitle.innerText = title;
+        this.dom.puzzleLevelDesc.innerText = "正在進行自訂殘局測試挑戰！";
+        this.dom.puzzleLimitText.innerText = maxMoves;
+        this.dom.puzzleUsedText.innerText = 0;
+        
+        this.dom.statusText.innerText = `殘局測試開始，您執 ${firstTurn === 1 ? '黑' : '白'}棋！`;
+        
+        if (firstTurn !== this.state.playerColor) {
+            if (this.handlers.onAITrigger) this.handlers.onAITrigger();
+        }
+        
+        this.renderBoard();
+        this.renderPuzzleLevels();
     }
 };
 

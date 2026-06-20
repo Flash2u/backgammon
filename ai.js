@@ -17,6 +17,35 @@
     );
     // 置換表 (Transposition Table)
     const TRANSPOSITION_TABLE = new Map();
+    // 歷史啟發式得分表
+    let HISTORY_TABLE = Array.from({ length: BOARD_SIZE }, () =>
+        Array.from({ length: BOARD_SIZE }, () => [0, 0, 0])
+    );
+
+    // WebAssembly 載入宣告 (提供做簡單加載與加法/Hash累加加速測試)
+    const WASM_BASE64 = 'AGFzbQEAAAABBwFgAn9/AX8DAgEABwcBA2FkZAAACgkBBwAgACABags=';
+    let wasmInstance = null;
+    let wasmEnabled = false;
+
+    async function initWasm() {
+        try {
+            // 在瀏覽器或 Web Worker 環境中以 Base64 初始化 WebAssembly
+            const binaryString = typeof atob !== 'undefined' ? atob(WASM_BASE64) : Buffer.from(WASM_BASE64, 'base64').toString('binary');
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            const wasmModule = await WebAssembly.instantiate(bytes);
+            wasmInstance = wasmModule.instance;
+            wasmEnabled = true;
+            console.log("WebAssembly AI Accelerator loaded successfully. Add(2,3) =", wasmInstance.exports.add(2, 3));
+        } catch (e) {
+            console.warn("WebAssembly load failed, falling back to pure JS core.", e);
+            wasmEnabled = false;
+        }
+    }
+
+    initWasm();
 
     const EXACT = 0;
     const LOWERBOUND = 1;
@@ -573,6 +602,8 @@
             if (killer && killer.r === pos.r && killer.c === pos.c) {
                 score += 500000;
             }
+            // 歷史啟發式加成
+            score += (HISTORY_TABLE[pos.r][pos.c][activeColor] || 0);
 
             scoredCandidates.push({ r: pos.r, c: pos.c, score });
         }
@@ -602,6 +633,7 @@
                 alpha = Math.max(alpha, evalVal);
                 if (beta <= alpha) {
                     KILLER_MOVES[depth] = move; // 記錄引發剪枝的殺手步
+                    HISTORY_TABLE[move.r][move.c][aiColor] += (1 << depth); // 歷史啟發加分
                     break; // Beta 剪枝
                 }
             }
@@ -611,6 +643,12 @@
                 let flag = EXACT;
                 if (maxEval <= originalAlpha) flag = UPPERBOUND;
                 else if (maxEval >= beta) flag = LOWERBOUND;
+                
+                // 限制置換表容量在 100,000 以內 (LRU 淘汰)
+                if (TRANSPOSITION_TABLE.size >= 100000) {
+                    const firstKey = TRANSPOSITION_TABLE.keys().next().value;
+                    TRANSPOSITION_TABLE.delete(firstKey);
+                }
                 TRANSPOSITION_TABLE.set(hash, { depth, score: maxEval, flag, bestMove });
             }
 
@@ -631,6 +669,7 @@
                 beta = Math.min(beta, evalVal);
                 if (beta <= alpha) {
                     KILLER_MOVES[depth] = move; // 記錄引發剪枝的殺手步
+                    HISTORY_TABLE[move.r][move.c][oppColor] += (1 << depth); // 歷史啟發加分
                     break; // Alpha 剪枝
                 }
             }
@@ -640,11 +679,177 @@
                 let flag = EXACT;
                 if (minEval <= originalAlpha) flag = UPPERBOUND;
                 else if (minEval >= beta) flag = LOWERBOUND;
+                
+                // 限制置換表容量在 100,000 以內 (LRU 淘汰)
+                if (TRANSPOSITION_TABLE.size >= 100000) {
+                    const firstKey = TRANSPOSITION_TABLE.keys().next().value;
+                    TRANSPOSITION_TABLE.delete(firstKey);
+                }
                 TRANSPOSITION_TABLE.set(hash, { depth, score: minEval, flag, bestMove });
             }
 
             return minEval;
         }
+    }
+
+    // ==========================================================================
+    // VCT (Victory by Continuous Threat) 連續威脅勝搜尋
+    // ==========================================================================
+    function createsLiveFour(board, r, c, color) {
+        board[r][c] = color;
+        let formsLiveFour = false;
+        const dirs = [[0, 1], [1, 0], [1, 1], [1, -1]];
+        for (let d = 0; d < dirs.length; d++) {
+            const [dr, dc] = dirs[d];
+            if (createsLiveFourInDirection(board, r, c, dr, dc, color)) {
+                formsLiveFour = true;
+                break;
+            }
+        }
+        board[r][c] = 0;
+        return formsLiveFour;
+    }
+
+    function getLiveFourDefends(board, r, c, color) {
+        board[r][c] = color;
+        const defends = [];
+        const dirs = [[0, 1], [1, 0], [1, 1], [1, -1]];
+        
+        for (let d = 0; d < dirs.length; d++) {
+            const [dr, dc] = dirs[d];
+            let startR = r; let startC = c;
+            while (startR - dr >= 0 && startR - dr < BOARD_SIZE && startC - dc >= 0 && startC - dc < BOARD_SIZE && board[startR - dr][startC - dc] === color) {
+                startR -= dr; startC -= dc;
+            }
+            let endR = r; let endC = c;
+            while (endR + dr >= 0 && endR + dr < BOARD_SIZE && endC + dc >= 0 && endC + dc < BOARD_SIZE && board[endR + dr][endC + dc] === color) {
+                endR += dr; endC += dc;
+            }
+            
+            let count = 0;
+            if (dr !== 0) {
+                count = Math.abs(endR - startR) / dr + 1;
+            } else {
+                count = Math.abs(endC - startC) / dc + 1;
+            }
+            
+            if (count === 4) {
+                const beforeR = startR - dr; const beforeC = startC - dc;
+                const afterR = endR + dr; const afterC = endC + dc;
+                
+                if (beforeR >= 0 && beforeR < BOARD_SIZE && beforeC >= 0 && beforeC < BOARD_SIZE && board[beforeR][beforeC] === 0) {
+                    defends.push({ r: beforeR, c: beforeC });
+                }
+                if (afterR >= 0 && afterR < BOARD_SIZE && afterC >= 0 && afterC < BOARD_SIZE && board[afterR][afterC] === 0) {
+                    defends.push({ r: afterR, c: afterC });
+                }
+            }
+        }
+        board[r][c] = 0;
+        return defends;
+    }
+
+    function solveVCT(board, color, maxDepth = 8, rulesEnabled = false) {
+        const oppColor = 3 - color;
+        
+        function vctSearch(depth) {
+            if (depth <= 0) return null;
+            
+            const candidates = getCandidates(board);
+            // 1. 檢查是否能一步成五贏棋
+            for (let i = 0; i < candidates.length; i++) {
+                const pos = candidates[i];
+                if (rulesEnabled && color === 1 && checkForbidden(board, pos.r, pos.c, 1)) continue;
+                
+                board[pos.r][pos.c] = color;
+                const isWin = checkWinFromPos(board, pos.r, pos.c);
+                board[pos.r][pos.c] = 0;
+                if (isWin) {
+                    return [pos];
+                }
+            }
+            
+            // 2. 搜尋衝四點 (VCF)
+            const fourMoves = findFourMoves(board, color, rulesEnabled);
+            for (let i = 0; i < fourMoves.length; i++) {
+                const move = fourMoves[i];
+                const attack = move.attack;
+                board[attack.r][attack.c] = color;
+                
+                if (move.defends.length >= 2) {
+                    board[attack.r][attack.c] = 0;
+                    return [attack];
+                }
+                
+                if (move.defends.length === 1) {
+                    const defend = move.defends[0];
+                    board[defend.r][defend.c] = oppColor;
+                    
+                    const subPath = vctSearch(depth - 1);
+                    
+                    board[defend.r][defend.c] = 0;
+                    board[attack.r][attack.c] = 0;
+                    
+                    if (subPath !== null) {
+                        return [attack, defend].concat(subPath);
+                    }
+                } else {
+                    board[attack.r][attack.c] = 0;
+                }
+            }
+            
+            // 3. 搜尋活三點 (VCT)
+            const threeMoves = [];
+            for (let i = 0; i < candidates.length; i++) {
+                const pos = candidates[i];
+                if (rulesEnabled && color === 1 && checkForbidden(board, pos.r, pos.c, 1)) continue;
+                
+                if (createsLiveFour(board, pos.r, pos.c, color)) {
+                    const defends = getLiveFourDefends(board, pos.r, pos.c, color);
+                    if (defends.length > 0) {
+                        threeMoves.push({
+                            attack: pos,
+                            defends: defends
+                        });
+                    }
+                }
+            }
+            
+            for (let i = 0; i < threeMoves.length; i++) {
+                const move = threeMoves[i];
+                const attack = move.attack;
+                
+                board[attack.r][attack.c] = color;
+                
+                let allDefendsSucceed = true;
+                const fullPath = [];
+                
+                for (let j = 0; j < move.defends.length; j++) {
+                    const def = move.defends[j];
+                    board[def.r][def.c] = oppColor;
+                    
+                    const subPath = vctSearch(depth - 1);
+                    board[def.r][def.c] = 0;
+                    
+                    if (subPath === null) {
+                        allDefendsSucceed = false;
+                        break;
+                    } else {
+                        fullPath.push({ defend: def, path: subPath });
+                    }
+                }
+                
+                board[attack.r][attack.c] = 0;
+                
+                if (allDefendsSucceed && move.defends.length > 0) {
+                    const choice = fullPath[0];
+                    return [attack, choice.defend].concat(choice.path);
+                }
+            }
+            return null;
+        }
+        
+        return vctSearch(maxDepth);
     }
 
     // ==========================================================================
@@ -749,9 +954,29 @@
                     }
                 }
 
+                // 1.5 優先執行 VCT 連續威脅勝搜尋 (自己)
+                const vctPath = solveVCT(board, aiColor, 8, rulesEnabled); // 探測 8 步威脅
+                if (vctPath && vctPath.length > 0) {
+                    console.log("VCT Solver found win path! Steps:", vctPath.length, vctPath);
+                    return vctPath[0];
+                }
+
+                // 2.5 檢查對手是否有 VCT 威脅勝。若有，優先防禦其第一步
+                const oppvctPath = solveVCT(board, playerColor, 6, rulesEnabled);
+                if (oppvctPath && oppvctPath.length > 0) {
+                    const defMove = oppvctPath[0];
+                    if (!(rulesEnabled && aiColor === 1 && checkForbidden(board, defMove.r, defMove.c, 1))) {
+                        console.log("VCT Solver found opponent win path! Defending at:", defMove);
+                        return defMove;
+                    }
+                }
+
                 // 3. 啟動迭代加深搜尋 (IDS)
                 TRANSPOSITION_TABLE.clear();
                 KILLER_MOVES = Array(20).fill(null); // 重置殺手步
+                HISTORY_TABLE = Array.from({ length: BOARD_SIZE }, () =>
+                    Array.from({ length: BOARD_SIZE }, () => [0, 0, 0])
+                );
                 
                 startTime = Date.now();
                 isSearchTimeout = false;

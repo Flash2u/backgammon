@@ -2004,6 +2004,100 @@ body.theme-slate .forbidden-marker {
     }
 }
 
+/* ==========================================================================
+   SGF LIBRARY & PUZZLE EDITOR & CANVASES
+   ========================================================================== */
+
+.sgf-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.sgf-item {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.sgf-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--accent-secondary);
+    color: var(--text-primary);
+    transform: translateX(3px);
+}
+
+.sgf-item.active {
+    background: rgba(0, 242, 254, 0.1);
+    border-color: var(--accent-secondary);
+    color: var(--accent-secondary);
+}
+
+.sgf-item-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.sgf-item-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.sgf-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sgf-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 3px;
+}
+
+.sgf-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+}
+
+.sgf-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* 殘局編輯器專屬樣式 */
+.puzzle-editor-card input[type="number"],
+.puzzle-editor-card input[type="text"] {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    padding: 8px 10px;
+    font-family: inherit;
+    font-size: 0.85rem;
+    margin-top: 4px;
+    transition: border-color 0.2s;
+}
+
+.puzzle-editor-card input[type="number"]:focus,
+.puzzle-editor-card input[type="text"]:focus {
+    border-color: var(--accent-primary);
+    outline: none;
+}
+
+/* 棋盤雷射流光 Canvas */
+.threat-canvas {
+    pointer-events: none;
+    mix-blend-mode: screen;
+}
+
+
 
 
 

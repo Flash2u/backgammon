@@ -1,4 +1,4 @@
-let audioCtx = null;
+﻿let audioCtx = null;
 let soundEnabled = true;
 
 function initAudio() {

@@ -1,7 +1,7 @@
-﻿import { game, state } from './src/game.js?v=1.9.5';
-import { ui } from './src/ui.js?v=1.9.5';
-import { audio } from './src/audio.js?v=1.9.5';
-import { p2p } from './src/p2p.js?v=1.9.5';
+﻿import { game, state } from './src/game.js';
+import { ui } from './src/ui.js';
+import { audio } from './src/audio.js';
+import { p2p } from './src/p2p.js';
 
 
 
@@ -132,6 +132,14 @@ document.addEventListener('DOMContentLoaded', () => {
         game.reset();
         resetTimer();
         
+        // 重置 AI 託管狀態
+        state.isLocalHosting = false;
+        const btnHosting = document.getElementById('btn-p2p-hosting');
+        if (btnHosting) {
+            btnHosting.classList.remove('active');
+            btnHosting.innerHTML = '<span class="btn-icon">🤖</span> 啟動 AI 託管代打';
+        }
+        
         // P2P 模式下，同步我的顏色給 UI
         if (state.gameMode === 'p2p' && p2p.isConnected()) {
             state.playerColor = p2p.getMyColor();
@@ -169,6 +177,25 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================================================
     function handleCellClick(r, c) {
         if (state.isGameOver || state.isAiThinking || isUndoing || state.isSpectator) return;
+        
+        // 攔截殘局編輯點擊
+        if (ui.isPuzzleEditing) {
+            const activeToolBtn = document.querySelector('#puzzle-edit-tool button.active');
+            const tool = activeToolBtn ? activeToolBtn.dataset.tool : 'black';
+            if (tool === 'black') {
+                state.board[r][c] = 1;
+                audio.playStone();
+            } else if (tool === 'white') {
+                state.board[r][c] = 2;
+                audio.playStone();
+            } else if (tool === 'erase') {
+                state.board[r][c] = 0;
+                audio.playStone();
+            }
+            ui.renderBoard();
+            return;
+        }
+
         if (state.board[r][c] !== 0) return;
 
         // P2P 模式限制
@@ -219,14 +246,29 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        // 殘局模式下，如果是玩家落子，增加已用步數
+        if (state.gameMode === 'puzzle' && activeColor === state.playerColor) {
+            state.puzzleMovesUsed++;
+            if (ui.dom.puzzleUsedText) {
+                ui.dom.puzzleUsedText.innerText = state.puzzleMovesUsed;
+            }
+        }
+
         // 處理遊戲結局
         if (result.type === 'win') {
             stopTimer();
             ui.updateStatsUI(state.stats);
+            state.isGameOver = true;
             
             // 延遲播放勝利/失敗音效並彈出 Modal
             setTimeout(() => {
                 if (state.gameMode === 'ai') {
+                    if (result.winner === state.playerColor) {
+                        audio.playWin();
+                    } else {
+                        audio.playLose();
+                    }
+                } else if (state.gameMode === 'puzzle') {
                     if (result.winner === state.playerColor) {
                         audio.playWin();
                     } else {
@@ -243,8 +285,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (result.type === 'draw') {
             stopTimer();
             ui.updateStatsUI(state.stats);
+            state.isGameOver = true;
             setTimeout(() => {
                 ui.showGameEndModal(0, []);
+            }, 300);
+            return;
+        }
+
+        // 殘局模式下，檢查是否超步
+        if (state.gameMode === 'puzzle' && state.puzzleMaxMoves > 0 && state.puzzleMovesUsed >= state.puzzleMaxMoves) {
+            state.isGameOver = true;
+            stopTimer();
+            setTimeout(() => {
+                audio.playLose();
+                ui.showGameEndModal(3 - state.playerColor, []); // 對手贏，即挑戰失敗
             }, 300);
             return;
         }
@@ -261,6 +315,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.gameMode === 'ai' && state.currentTurn !== state.playerColor) {
             triggerAIMove();
         }
+
+        // 殘局模式且輪到 AI (非玩家顏色)
+        if (state.gameMode === 'puzzle' && state.currentTurn !== state.playerColor) {
+            triggerAIMove();
+        }
+
+        // 如果是 P2P 模式，且輪到我，且開啟了 AI 託管
+        if (state.gameMode === 'p2p' && p2p.isConnected() && state.currentTurn === p2p.getMyColor() && state.isLocalHosting) {
+            setTimeout(() => {
+                triggerHostingMove();
+            }, 500);
+        }
     }
 
     // ==========================================================================
@@ -274,6 +340,35 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             (bestMove) => {
                 state.isAiThinking = false;
+                if (state.isGameOver) return;
+
+                if (bestMove) {
+                    executeMove(bestMove.r, bestMove.c);
+                } else {
+                    ui.updateTurnUI();
+                }
+            },
+            (progress) => {
+                ui.updateAIMonitor(progress);
+            }
+        );
+    }
+
+    function triggerHostingMove() {
+        if (!state.isLocalHosting || state.currentTurn !== p2p.getMyColor() || state.isGameOver) return;
+        
+        // 暫時切換 playerColor 為當前顏色以供 AI 搜尋，計算完即還原
+        const origPlayerColor = state.playerColor;
+        state.playerColor = p2p.getMyColor();
+        
+        game.triggerAIMove(
+            () => {
+                state.isAiThinking = true;
+                ui.updateTurnUI();
+            },
+            (bestMove) => {
+                state.isAiThinking = false;
+                state.playerColor = origPlayerColor;
                 if (state.isGameOver) return;
 
                 if (bestMove) {
@@ -305,8 +400,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 人機對抗悔棋需要回退 2 步 (玩家+AI)，本地雙人回退 1 步
-        const steps = state.gameMode === 'ai' ? 2 : 1;
+        // 人機對抗與殘局悔棋需要回退 2 步 (玩家+AI)，本地雙人回退 1 步
+        const steps = (state.gameMode === 'ai' || state.gameMode === 'puzzle') ? 2 : 1;
         performUndo(steps);
     }
 
@@ -318,6 +413,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!undoResult) {
             isUndoing = false;
             return;
+        }
+
+        // 殘局模式下，扣減已用步數
+        if (state.gameMode === 'puzzle') {
+            state.puzzleMovesUsed = Math.max(0, state.puzzleMovesUsed - 1);
+            if (ui.dom.puzzleUsedText) {
+                ui.dom.puzzleUsedText.innerText = state.puzzleMovesUsed;
+            }
         }
 
         // 執行 UI 動畫
@@ -536,6 +639,9 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'chat':
                 if (data.fromSpectator) {
                     ui.appendChatMessage(`旁觀者_${data.senderId.slice(0, 4)}`, data.text, 'opponent');
+                    if (ui.danmakuSystem) {
+                        ui.danmakuSystem.addDanmaku(data.text);
+                    }
                     // 房主轉發消息給對手與所有旁觀者
                     if (p2p.getMyColor() === 1) {
                         p2p.broadcast({
@@ -547,6 +653,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 } else {
                     ui.appendChatMessage('對手', data.text, 'opponent');
+                    if (state.isSpectator && ui.danmakuSystem) {
+                        ui.danmakuSystem.addDanmaku(data.text);
+                    }
                 }
                 break;
 
@@ -554,6 +663,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data.fromSpectator) {
                     ui.appendChatMessage(`旁觀者_${data.senderId.slice(0, 4)}`, data.emoji, 'opponent');
                     ui.showFloatingEmoji(data.emoji);
+                    if (ui.danmakuSystem) {
+                        ui.danmakuSystem.addDanmaku(data.emoji);
+                    }
                     if (p2p.getMyColor() === 1) {
                         p2p.broadcast({
                             type: 'emoji',
@@ -565,6 +677,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     ui.appendChatMessage('對手', data.emoji, 'opponent');
                     ui.showFloatingEmoji(data.emoji);
+                    if (state.isSpectator && ui.danmakuSystem) {
+                        ui.danmakuSystem.addDanmaku(data.emoji);
+                    }
                 }
                 break;
         }
@@ -612,7 +727,14 @@ document.addEventListener('DOMContentLoaded', () => {
             // 開啟語音
             try {
                 ui.setVoiceUIActive(false, true);
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    },
+                    video: false
+                });
                 localVoiceStream = stream;
                 
                 const oppId = p2p.getOpponentId();
@@ -682,6 +804,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             },
             onP2PCreateRoom: (roomName) => {
+                const myId = document.getElementById('p2p-my-id').innerText;
+                if (!myId || myId === '---') {
+                    ui.showP2PToast('⚠️ 信令伺服器尚未連線成功，無法創建房間！', true);
+                    return;
+                }
                 p2p.registerRoom(roomName, state.rulesMode);
                 ui.showP2PToast(`📢 房間 "${roomName || '五子棋對決'}" 已公開，等待對手中...`);
             },
@@ -772,7 +899,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             },
             isP2PConnected: () => p2p.isConnected(),
-            getP2PMyColor: () => p2p.getMyColor()
+            getP2PMyColor: () => p2p.getMyColor(),
+            onAITrigger: () => triggerAIMove(),
+            onP2PHostingToggle: () => {
+                state.isLocalHosting = !state.isLocalHosting;
+                const btnHosting = document.getElementById('btn-p2p-hosting');
+                if (state.isLocalHosting) {
+                    if (btnHosting) {
+                        btnHosting.classList.add('active');
+                        btnHosting.innerHTML = '<span class="btn-icon">🤖</span> 取消 AI 託管代打';
+                    }
+                    ui.showP2PToast('🤖 已開啟 AI 託管代打，將自動為您落子！');
+                    if (state.currentTurn === p2p.getMyColor() && !state.isGameOver) {
+                        triggerHostingMove();
+                    }
+                } else {
+                    if (btnHosting) {
+                        btnHosting.classList.remove('active');
+                        btnHosting.innerHTML = '<span class="btn-icon">🤖</span> 啟動 AI 託管代打';
+                    }
+                    ui.showP2PToast('👤 已關閉 AI 託管，恢復手動操作');
+                }
+            }
         });
 
         // 2. 初始化 P2P
@@ -796,6 +944,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         ui.showP2PToast('👁️ 正在進入觀戰模式...');
                         p2p.connectSpectator(roomId);
                     } else {
+                        state.gameMode = 'p2p';
+                        ui.updateSettingButtons('gameMode', 'p2p');
+                        ui.showP2PToast('🔌 正在與房主連線，請稍後...');
                         p2p.connect(roomId);
                     }
                 }
@@ -820,8 +971,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             },
             onClose: () => {
-                state.isGameOver = true;
-                stopTimer();
+                if (state.isGameOver) return;
+                ui.showP2PToast('🔌 對手已斷線！已自動為對手啟用 AI 託管代打。', true);
+                state.gameMode = 'ai';
+                ui.updateSettingButtons('gameMode', 'ai');
+                if (state.currentTurn !== state.playerColor) {
+                    triggerAIMove();
+                }
             },
             onData: (data) => handleP2PData(data)
         });

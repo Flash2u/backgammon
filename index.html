@@ -115,9 +115,66 @@
                             <span class="btn-icon" id="sound-icon">🔊</span> 音效: 開
                         </button>
                     </div>
+                    <div class="btn-row" style="margin-top: 12px; display: flex; gap: 8px;">
+                        <button id="btn-sgf-library" class="btn-secondary" style="flex: 1; margin-top: 0;">
+                            <span class="btn-icon">📚</span> 棋譜庫
+                        </button>
+                        <button id="btn-puzzle-editor" class="btn-secondary" style="flex: 1; margin-top: 0;">
+                            <span class="btn-icon">🛠️</span> 殘局編輯
+                        </button>
+                    </div>
                     <button id="btn-about" class="btn-secondary" style="width: 100%; margin-top: 12px;">
                         <span class="btn-icon">ℹ️</span> 關於遊戲
                     </button>
+                </div>
+
+                <!-- SGF Library Card -->
+                <div class="glass-card sgf-library-card" id="sgf-library-card" style="display: none;">
+                    <h2 class="card-title" style="color: var(--accent-secondary);"><span class="btn-icon">📚</span> 本地棋譜庫</h2>
+                    <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                        <input type="file" id="sgf-file-input" accept=".sgf" style="display: none;">
+                        <button id="btn-import-sgf" class="btn-primary" style="flex: 1; margin-top: 0;">📤 匯入 SGF</button>
+                    </div>
+                    <div id="sgf-list" class="sgf-list" style="max-height: 250px; overflow-y: auto; padding-right: 4px; margin-bottom: 12px;">
+                        <!-- 棋譜項目動態生成 -->
+                    </div>
+                    <button id="btn-exit-sgf-lib" class="btn-secondary" style="width: 100%;">❌ 關閉</button>
+                </div>
+
+                <!-- Puzzle Editor Card -->
+                <div class="glass-card puzzle-editor-card" id="puzzle-editor-card" style="display: none;">
+                    <h2 class="card-title" style="color: var(--accent-primary);"><span class="btn-icon">🛠️</span> 殘局編輯器</h2>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
+                        直接在棋盤上點擊放置棋子，設定規則後可開始挑戰或儲存。
+                    </p>
+                    <div class="form-group">
+                        <label>擺放棋子類型</label>
+                        <div class="segmented-control" id="puzzle-edit-tool">
+                            <button class="active" data-tool="black">⚫ 黑子</button>
+                            <button data-tool="white">⚪ 白子</button>
+                            <button data-tool="erase">🧹 橡皮擦</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>挑戰先手落子</label>
+                        <div class="segmented-control" id="puzzle-edit-turn">
+                            <button class="active" data-turn="1">黑棋先手</button>
+                            <button data-turn="2">白棋先手</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>限制步數 (0為無限制)</label>
+                        <input type="number" id="puzzle-edit-max-moves" value="5" min="0" max="100" style="width: 100%; box-sizing: border-box;">
+                    </div>
+                    <div class="form-group">
+                        <label>關卡標題</label>
+                        <input type="text" id="puzzle-edit-title" value="我的自訂關卡" placeholder="請輸入標題" style="width: 100%; box-sizing: border-box;">
+                    </div>
+                    <div class="btn-row" style="margin-bottom: 12px; display: flex; gap: 8px;">
+                        <button id="btn-puzzle-edit-test" class="btn-primary" style="flex: 1; margin-top: 0;">⚔️ 測試挑戰</button>
+                        <button id="btn-puzzle-edit-save" class="btn-secondary" style="flex: 1; margin-top: 0;">💾 儲存關卡</button>
+                    </div>
+                    <button id="btn-puzzle-edit-exit" class="btn-secondary" style="width: 100%;">❌ 退出編輯</button>
                 </div>
 
                 <!-- Puzzle Levels Card -->
@@ -178,6 +235,12 @@
                             <span class="btn-icon">🎙️</span> 開啟語音對話
                         </button>
                         <audio id="p2p-remote-audio" autoplay style="display: none;"></audio>
+                    </div>
+                    
+                    <div class="p2p-hosting-group" id="p2p-hosting-group" style="display: none; border-top: 1px solid var(--card-border); padding-top: 12px; margin-top: 8px;">
+                        <button id="btn-p2p-hosting" class="btn-secondary" style="width: 100%; margin-top: 0; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            <span class="btn-icon">🤖</span> 啟動 AI 託管代打
+                        </button>
                     </div>
 
                     <!-- P2P Lobby Matchmaking (v2.0.0) -->
@@ -261,6 +324,7 @@
                 <div class="board-wrapper">
                     <!-- The Gomoku Board -->
                     <div id="gomoku-board" class="gomoku-board"></div>
+                    <canvas id="threat-canvas" class="threat-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;"></canvas>
                     <div id="board-start-toast" class="board-start-toast"></div>
                 </div>
             </section>
@@ -333,10 +397,13 @@
         </div>
     </div>
 
+    <!-- Full-screen Canvas for weather, danmaku and celebration effects -->
+    <canvas id="screen-canvas" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 9999;"></canvas>
+
     <!-- Load scripts at the end -->
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <script src="ai.js?v=1.9.5"></script>
-    <script type="module" src="app.js?v=1.9.5"></script>
+    <script type="module" src="app.js?v=1.9.6"></script>
 </body>
 </html>
 

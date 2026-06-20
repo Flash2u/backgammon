@@ -1,4 +1,4 @@
-export const BOARD_SIZE = 15;
+﻿export const BOARD_SIZE = 15;
 
 // 單例狀態
 export const state = {
@@ -221,13 +221,13 @@ export const game = {
         state.board[r][c] = color;
         const win = this.checkWin(r, c);
         state.board[r][c] = 0;
-        return win !== null;
+        return win; // 回傳贏棋物件 { winner, stones } 或 null
     },
 
     createsLiveFour(r, c, color) {
         // 模擬在 (r, c) 落子
         state.board[r][c] = color;
-        let formsLiveFour = false;
+        let matchedWindow = null;
         
         // 掃描方向
         const dirs = [
@@ -242,6 +242,7 @@ export const game = {
             // 因此起點相對於 (r, c) 的偏移量 i 為 -4 到 -1
             for (let i = -4; i <= -1; i++) {
                 let isMatch = true;
+                const tempStones = [];
                 
                 for (let j = 0; j < 6; j++) {
                     const step = i + j;
@@ -264,20 +265,29 @@ export const game = {
                             isMatch = false;
                             break;
                         }
+                        tempStones.push({ r: nr, c: nc });
                     }
                 }
                 
                 if (isMatch) {
-                    formsLiveFour = true;
+                    matchedWindow = {
+                        stones: tempStones,
+                        line: {
+                            r1: r + i * dr,
+                            c1: c + i * dc,
+                            r2: r + (i + 5) * dr,
+                            c2: c + (i + 5) * dc
+                        }
+                    };
                     break;
                 }
             }
-            if (formsLiveFour) break;
+            if (matchedWindow) break;
         }
         
         // 還原棋盤
         state.board[r][c] = 0;
-        return formsLiveFour;
+        return matchedWindow;
     },
 
     // 威脅掃描
@@ -288,21 +298,48 @@ export const game = {
         for (let r = 0; r < BOARD_SIZE; r++) {
             for (let c = 0; c < BOARD_SIZE; c++) {
                 if (state.board[r][c] === 0) {
-                    const completesFiveBlack = this.completesFive(r, c, 1);
-                    const completesFiveWhite = this.completesFive(r, c, 2);
-                    const createsLiveFourBlack = this.createsLiveFour(r, c, 1);
-                    const createsLiveFourWhite = this.createsLiveFour(r, c, 2);
+                    const c5Black = this.completesFive(r, c, 1);
+                    const c5White = this.completesFive(r, c, 2);
+                    const cl4Black = this.createsLiveFour(r, c, 1);
+                    const cl4White = this.createsLiveFour(r, c, 2);
+
+                    const completesFiveBlack = c5Black !== null;
+                    const completesFiveWhite = c5White !== null;
+                    const createsLiveFourBlack = cl4Black !== null;
+                    const createsLiveFourWhite = cl4White !== null;
 
                     const isFatal = completesFiveBlack || completesFiveWhite;
                     const isWarning = !isFatal && (createsLiveFourBlack || createsLiveFourWhite);
 
                     if (isFatal || isWarning) {
+                        let threatLine = null;
+                        if (isFatal) {
+                            const winObj = c5Black || c5White;
+                            if (winObj && winObj.stones && winObj.stones.length > 0) {
+                                const stones = winObj.stones;
+                                let minR = Infinity, maxR = -Infinity, minC = Infinity, maxC = -Infinity;
+                                stones.forEach(s => {
+                                    if (s.r < minR) minR = s.r;
+                                    if (s.r > maxR) maxR = s.r;
+                                    if (s.c < minC) minC = s.c;
+                                    if (s.c > maxC) maxC = s.c;
+                                });
+                                threatLine = { r1: minR, c1: minC, r2: maxR, c2: maxC };
+                            }
+                        } else {
+                            const l4Obj = cl4Black || cl4White;
+                            if (l4Obj && l4Obj.line) {
+                                threatLine = l4Obj.line;
+                            }
+                        }
+
                         hints.push({
                             r, c,
                             isFatal,
                             isWarning,
                             black: completesFiveBlack || (isWarning && createsLiveFourBlack),
-                            white: completesFiveWhite || (isWarning && createsLiveFourWhite)
+                            white: completesFiveWhite || (isWarning && createsLiveFourWhite),
+                            threatLine: threatLine
                         });
                     }
                 }
