@@ -1,4 +1,4 @@
-import { BOARD_SIZE } from './game.js';
+﻿import { BOARD_SIZE } from './game.js';
 
 export const ui = {
     state: null,
@@ -18,6 +18,7 @@ export const ui = {
     cacheDOM() {
         this.dom.board = document.getElementById('gomoku-board');
         this.dom.boardWrapper = this.dom.board.parentElement;
+        this.dom.boardStartToast = document.getElementById('board-start-toast');
         this.dom.statusText = document.getElementById('status-text');
         this.dom.turnDot = document.querySelector('.turn-dot');
         this.dom.timer = document.getElementById('game-timer');
@@ -42,6 +43,29 @@ export const ui = {
         this.dom.modalMessage = document.getElementById('modal-message');
         this.dom.btnModalRestart = document.getElementById('btn-modal-restart');
         this.dom.btnModalClose = document.getElementById('btn-modal-close');
+
+        // Replay/SGF Modal Buttons
+        this.dom.btnModalReplay = document.getElementById('btn-modal-replay');
+        this.dom.btnModalExport = document.getElementById('btn-modal-export');
+
+        // Cards for switching
+        this.dom.opsCard = document.querySelector('.ops-card');
+        this.dom.puzzleCard = document.getElementById('puzzle-card');
+        this.dom.puzzleLevelsList = document.getElementById('puzzle-levels-list');
+        this.dom.puzzleStatusPanel = document.getElementById('puzzle-status-panel');
+        this.dom.puzzleLevelTitle = document.getElementById('puzzle-level-title');
+        this.dom.puzzleLevelDesc = document.getElementById('puzzle-level-desc');
+        this.dom.puzzleLimitText = document.getElementById('puzzle-limit-text');
+        this.dom.puzzleUsedText = document.getElementById('puzzle-used-text');
+
+        this.dom.replayCard = document.getElementById('replay-card');
+        this.dom.replayStatus = document.getElementById('replay-status');
+        this.dom.btnReplayFirst = document.getElementById('btn-replay-first');
+        this.dom.btnReplayPrev = document.getElementById('btn-replay-prev');
+        this.dom.btnReplayNext = document.getElementById('btn-replay-next');
+        this.dom.btnReplayLast = document.getElementById('btn-replay-last');
+        this.dom.btnReplayExport = document.getElementById('btn-replay-export');
+        this.dom.btnReplayExit = document.getElementById('btn-replay-exit');
 
         // P2P DOM
         this.dom.p2pCard = document.getElementById('p2p-card');
@@ -91,7 +115,7 @@ export const ui = {
                 const isStar = stars.some(star => star.r === r && star.c === c);
                 if (isStar) {
                     const starDot = document.createElement('div');
-                    starDot.className = 'star';
+                    starDot.className = 'star-point-dot';
                     cell.appendChild(starDot);
                 }
 
@@ -485,13 +509,22 @@ export const ui = {
     },
 
     updateTurnUI() {
-        if (this.state.isGameOver) return;
-
-        const isP2P = this.state.gameMode === 'pvp' && this.handlers.isP2PConnected();
+        const isP2P = this.state.gameMode === 'p2p' && this.handlers.isP2PConnected();
         let myColor = null;
         if (isP2P) {
             myColor = this.handlers.getP2PMyColor();
         }
+
+        // 判定棋盤是否應為禁用狀態 (唯讀)
+        const isBoardDisabled = this.state.isGameOver || 
+                                this.state.isAiThinking || 
+                                (this.state.gameMode === 'p2p' && (!this.handlers.isP2PConnected() || this.state.currentTurn !== myColor)) ||
+                                (this.state.gameMode === 'ai' && this.state.currentTurn !== this.state.playerColor) ||
+                                this.state.isReplayMode;
+
+        this.dom.board.classList.toggle('board-disabled', !!isBoardDisabled);
+
+        if (this.state.isGameOver) return;
 
         const turnDotColor = this.state.currentTurn === 1 
             ? 'var(--accent-primary)' 
@@ -499,13 +532,18 @@ export const ui = {
 
         this.dom.turnDot.style.background = turnDotColor;
         
-        if (isP2P) {
-            if (this.state.currentTurn === myColor) {
-                this.dom.statusText.innerText = '您的回合 (請落子)';
-                this.dom.statusText.style.color = 'var(--accent-primary)';
+        if (this.state.gameMode === 'p2p') {
+            if (isP2P) {
+                if (this.state.currentTurn === myColor) {
+                    this.dom.statusText.innerText = '您的回合 (請落子)';
+                    this.dom.statusText.style.color = 'var(--accent-primary)';
+                } else {
+                    this.dom.statusText.innerText = '等待對手落子...';
+                    this.dom.statusText.style.color = 'var(--text-secondary)';
+                }
             } else {
-                this.dom.statusText.innerText = '等待對手落子...';
-                this.dom.statusText.style.color = 'var(--text-secondary)';
+                this.dom.statusText.innerText = '等待對手連線...';
+                this.dom.statusText.style.color = 'var(--accent-primary)';
             }
         } else {
             if (this.state.gameMode === 'ai') {
@@ -551,7 +589,7 @@ export const ui = {
     },
 
     updateUndoButtonState() {
-        const isP2P = this.state.gameMode === 'pvp' && this.handlers.isP2PConnected();
+        const isP2P = this.state.gameMode === 'p2p' && this.handlers.isP2PConnected();
         this.dom.btnUndo.disabled = this.state.isGameOver || this.state.history.length === 0 || this.state.isAiThinking || (isP2P && this.state.currentTurn !== this.handlers.getP2PMyColor());
     },
 
@@ -574,7 +612,7 @@ export const ui = {
     },
 
     updateChatAreaVisibility() {
-        if (this.state.gameMode === 'pvp' && this.handlers.isP2PConnected()) {
+        if (this.state.gameMode === 'p2p' && this.handlers.isP2PConnected()) {
             this.dom.p2pChatArea.style.display = 'flex';
         } else {
             this.dom.p2pChatArea.style.display = 'none';
@@ -676,14 +714,16 @@ export const ui = {
             if (this.state.gameMode === 'ai') {
                 if (winner === this.state.playerColor) {
                     titleText = '🎉 恭喜獲勝！';
-                    msgText = `您成功擊敗了 [${this.getDiffName(this.state.aiDifficulty)}] AI！`;
+                    msgText = `您成功擊敗了 [${this.getDiffName(this.state.aiDifficulty)}] AI！\n【 贏家：您 (玩家) ｜ 輸家：AI 】`;
                 } else {
                     titleText = '💀 遺憾落敗...';
-                    msgText = `您被 [${this.getDiffName(this.state.aiDifficulty)}] AI 擊敗了，再接再厲！`;
+                    msgText = `您被 [${this.getDiffName(this.state.aiDifficulty)}] AI 擊敗了，再接再厲！\n【 贏家：AI ｜ 輸家：您 (玩家) 】`;
                 }
             } else {
                 titleText = '🏆 棋局已分！';
-                msgText = `恭喜 ${winner === 1 ? '先手黑棋' : '後手白棋'} 贏得本場勝利！`;
+                const winnerName = winner === 1 ? '先手黑棋' : '後手白棋';
+                const loserName = winner === 1 ? '後手白棋' : '先手黑棋';
+                msgText = `恭喜 ${winnerName} 贏得本場勝利！\n【 贏家：${winnerName} ｜ 輸家：${loserName} 】`;
             }
         }
 
@@ -691,6 +731,34 @@ export const ui = {
         this.dom.modalMessage.innerText = msgText;
         this.dom.winModal.classList.add('active');
         this.dom.btnUndo.disabled = true;
+    },
+
+    showBoardStartToast(text) {
+        if (!this.dom.boardStartToast) return;
+        this.dom.boardStartToast.innerText = text;
+        this.dom.boardStartToast.classList.remove('fade-out');
+        this.dom.boardStartToast.style.display = 'block';
+
+        if (this.toastTimer) {
+            clearTimeout(this.toastTimer);
+        }
+        this.toastTimer = setTimeout(() => {
+            this.hideBoardStartToast();
+        }, 5000);
+    },
+
+    hideBoardStartToast() {
+        if (!this.dom.boardStartToast) return;
+        if (this.toastTimer) {
+            clearTimeout(this.toastTimer);
+            this.toastTimer = null;
+        }
+        this.dom.boardStartToast.classList.add('fade-out');
+        setTimeout(() => {
+            if (this.dom.boardStartToast.classList.contains('fade-out')) {
+                this.dom.boardStartToast.style.display = 'none';
+            }
+        }, 500);
     },
 
     getDiffName(diff) {
@@ -708,7 +776,7 @@ export const ui = {
                 btn.classList.toggle('active', btn.dataset.mode === value);
             });
             this.dom.difficultyGroup.style.display = value === 'ai' ? 'block' : 'none';
-            this.dom.p2pCard.style.display = value === 'pvp' ? 'block' : 'none';
+            this.dom.p2pCard.style.display = value === 'p2p' ? 'block' : 'none';
             this.updateChatAreaVisibility();
         } else if (name === 'aiDifficulty') {
             this.dom.difficultyButtons.forEach(btn => {
@@ -745,3 +813,4 @@ export const ui = {
         }
     }
 };
+

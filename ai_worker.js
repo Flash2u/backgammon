@@ -1,11 +1,11 @@
-/**
+﻿/**
  * ai_worker.js
  * 五子棋 AI 背景線程 Web Worker
  * 負責將耗時的 Minimax 搜尋與 Alpha-Beta 剪枝運算移出網頁主執行緒，確保畫面流暢。
  */
 
 // 載入 AI 演算法核心庫
-importScripts('ai.js?v=1.4.0');
+importScripts('ai.js?v=1.9.5');
 
 self.onmessage = function(e) {
     const { board, aiColor, difficulty, rulesEnabled } = e.data;

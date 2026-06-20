@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ai.js
  * 五子棋 AI 核心演算法 - 支援多線程與 Zobrist 雜湊置換表
  * 同時支援瀏覽器主執行緒與 Web Worker 背景執行緒
@@ -375,10 +375,144 @@
         return candidates;
     }
 
+    // 殺手步啟發式 (Killer Heuristic) 陣列
+    let KILLER_MOVES = [];
+
+    // 超時控制與搜尋統計
+    let isSearchTimeout = false;
+    let startTime = 0;
+    const timeLimit = 1500; // 1.5 秒單步時間限制
+    let nodeCount = 0;
+
     // ==========================================================================
-    // Minimax 搜尋與 Alpha-Beta 剪枝 (帶有置換表功能)
+    // VCF (Victory by Continuous Four) 連續衝四勝專屬搜尋器
+    // ==========================================================================
+    function findFourMoves(board, color, rulesEnabled = false) {
+        const moves = [];
+        const candidates = getCandidates(board);
+        for (let i = 0; i < candidates.length; i++) {
+            const pos = candidates[i];
+            
+            // 禁手規則啟用且進攻方為黑棋，檢查該落子點是否為禁手
+            if (rulesEnabled && color === 1) {
+                if (checkForbidden(board, pos.r, pos.c, 1)) {
+                    continue;
+                }
+            }
+            
+            board[pos.r][pos.c] = color;
+            
+            let winSpots = [];
+            const dirs = [[0, 1], [1, 0], [1, 1], [1, -1]];
+            for (let d = 0; d < dirs.length; d++) {
+                const [dr, dc] = dirs[d];
+                for (let step = -4; step <= 4; step++) {
+                    if (step === 0) continue;
+                    const nr = pos.r + step * dr;
+                    const nc = pos.c + step * dc;
+                    if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE) {
+                        if (board[nr][nc] === 0) {
+                            board[nr][nc] = color;
+                            const isWin = checkWinFromPos(board, nr, nc);
+                            board[nr][nc] = 0;
+                            if (isWin) {
+                                if (!winSpots.some(p => p.r === nr && p.c === nc)) {
+                                    winSpots.push({ r: nr, c: nc });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            board[pos.r][pos.c] = 0; // 復原
+            
+            if (winSpots.length > 0) {
+                moves.push({
+                    attack: pos,
+                    defends: winSpots
+                });
+            }
+        }
+        return moves;
+    }
+
+    function solveVCF(board, color, maxDepth = 10, rulesEnabled = false) {
+        const oppColor = 3 - color;
+        
+        function vcfSearch(depth) {
+            if (depth <= 0) return null;
+            
+            // 1. 檢查是否能一步成五贏棋
+            const candidates = getCandidates(board);
+            for (let i = 0; i < candidates.length; i++) {
+                const pos = candidates[i];
+                
+                // 禁手規則啟用且進攻方為黑棋，成五點亦不能是禁手（例如排除長連禁手）
+                if (rulesEnabled && color === 1) {
+                    if (checkForbidden(board, pos.r, pos.c, 1)) {
+                        continue;
+                    }
+                }
+                
+                board[pos.r][pos.c] = color;
+                const isWin = checkWinFromPos(board, pos.r, pos.c);
+                board[pos.r][pos.c] = 0;
+                if (isWin) {
+                    return [pos];
+                }
+            }
+            
+            // 2. 搜尋衝四點
+            const moves = findFourMoves(board, color, rulesEnabled);
+            
+            for (let i = 0; i < moves.length; i++) {
+                const move = moves[i];
+                const attack = move.attack;
+                
+                board[attack.r][attack.c] = color;
+                
+                if (move.defends.length >= 2) {
+                    // 形成活四，必勝
+                    board[attack.r][attack.c] = 0;
+                    return [attack];
+                }
+                
+                if (move.defends.length === 1) {
+                    const defend = move.defends[0];
+                    board[defend.r][defend.c] = oppColor;
+                    
+                    const subPath = vcfSearch(depth - 1);
+                    
+                    board[defend.r][defend.c] = 0;
+                    board[attack.r][attack.c] = 0;
+                    
+                    if (subPath !== null) {
+                        return [attack, defend].concat(subPath);
+                    }
+                } else {
+                    board[attack.r][attack.c] = 0;
+                }
+            }
+            return null;
+        }
+        
+        return vcfSearch(maxDepth);
+    }
+
+    // ==========================================================================
+    // Minimax 搜尋與 Alpha-Beta 剪枝 (帶有置換表、超時中斷與殺手步啟發式)
     // ==========================================================================
     function minimax(board, depth, alpha, beta, isMaximizing, aiColor, lastR, lastC, hash, rulesEnabled) {
+        nodeCount++;
+        // 每 128 個節點檢查一次超時，以兼顧效能與靈敏度
+        if (nodeCount % 128 === 0) {
+            if (Date.now() - startTime > timeLimit) {
+                isSearchTimeout = true;
+            }
+        }
+        if (isSearchTimeout) return 0;
+
         const oppColor = 3 - aiColor;
         const originalAlpha = alpha;
 
@@ -400,6 +534,7 @@
         // 葉節點勝負檢查
         if (lastR !== undefined && lastC !== undefined) {
             if (checkWinFromPos(board, lastR, lastC)) {
+                // 越早獲勝得分越高，越晚獲勝得分越低
                 return isMaximizing ? (-100000000 + (5 - depth)) : (100000000 - (5 - depth));
             }
         }
@@ -413,6 +548,7 @@
 
         const activeColor = isMaximizing ? aiColor : oppColor;
         const scoredCandidates = [];
+        const ttBestMove = ttEntry ? ttEntry.bestMove : null;
 
         for (let i = 0; i < candidates.length; i++) {
             const pos = candidates[i];
@@ -424,8 +560,20 @@
                 }
             }
 
-            const score = getImmediateScore(board, pos.r, pos.c, aiColor) + 
+            // 基礎局勢評分
+            let score = getImmediateScore(board, pos.r, pos.c, aiColor) + 
                           getImmediateScore(board, pos.r, pos.c, oppColor) * 1.15;
+
+            // 著法排序優化：置換表最優步加成
+            if (ttBestMove && ttBestMove.r === pos.r && ttBestMove.c === pos.c) {
+                score += 10000000;
+            }
+            // 著法排序優化：殺手步加成
+            const killer = KILLER_MOVES[depth];
+            if (killer && killer.r === pos.r && killer.c === pos.c) {
+                score += 500000;
+            }
+
             scoredCandidates.push({ r: pos.r, c: pos.c, score });
         }
 
@@ -452,14 +600,19 @@
                     bestMove = move;
                 }
                 alpha = Math.max(alpha, evalVal);
-                if (beta <= alpha) break; // Beta 剪枝
+                if (beta <= alpha) {
+                    KILLER_MOVES[depth] = move; // 記錄引發剪枝的殺手步
+                    break; // Beta 剪枝
+                }
             }
 
-            // 將結果寫入置換表
-            let flag = EXACT;
-            if (maxEval <= originalAlpha) flag = UPPERBOUND;
-            else if (maxEval >= beta) flag = LOWERBOUND;
-            TRANSPOSITION_TABLE.set(hash, { depth, score: maxEval, flag, bestMove });
+            // 只有當搜尋未超時且結果完整時才寫入置換表，防範快取污染
+            if (!isSearchTimeout) {
+                let flag = EXACT;
+                if (maxEval <= originalAlpha) flag = UPPERBOUND;
+                else if (maxEval >= beta) flag = LOWERBOUND;
+                TRANSPOSITION_TABLE.set(hash, { depth, score: maxEval, flag, bestMove });
+            }
 
             return maxEval;
         } else {
@@ -476,14 +629,19 @@
                     bestMove = move;
                 }
                 beta = Math.min(beta, evalVal);
-                if (beta <= alpha) break; // Alpha 剪枝
+                if (beta <= alpha) {
+                    KILLER_MOVES[depth] = move; // 記錄引發剪枝的殺手步
+                    break; // Alpha 剪枝
+                }
             }
 
-            // 將結果寫入置換表
-            let flag = EXACT;
-            if (minEval <= originalAlpha) flag = UPPERBOUND;
-            else if (minEval >= beta) flag = LOWERBOUND;
-            TRANSPOSITION_TABLE.set(hash, { depth, score: minEval, flag, bestMove });
+            // 只有當搜尋未超時且結果完整時才寫入置換表，防範快取污染
+            if (!isSearchTimeout) {
+                let flag = EXACT;
+                if (minEval <= originalAlpha) flag = UPPERBOUND;
+                else if (minEval >= beta) flag = LOWERBOUND;
+                TRANSPOSITION_TABLE.set(hash, { depth, score: minEval, flag, bestMove });
+            }
 
             return minEval;
         }
@@ -561,7 +719,7 @@
                 return pool[Math.floor(Math.random() * pool.length)];
             }
 
-            // 3. 困難難度 (Hard)：採用 Minimax 搭配置換表，搜尋深度提升至 4 步 (depth=3)
+            // 3. 困難難度 (Hard)：採用 VCF 絕殺探測 + 迭代加深搜尋 (IDS) 搭置換表與殺手步
             if (difficulty === 'hard') {
                 let stoneCount = 0;
                 for (let r = 0; r < BOARD_SIZE; r++) {
@@ -574,47 +732,104 @@
                     return { r: 7, c: 7 };
                 }
 
-                // 清空本輪置換表快取
+                // 1. 優先執行 VCF 連續衝四絕殺搜尋 (自己)
+                const vcfPath = solveVCF(board, aiColor, 10, rulesEnabled); // 探測 10 步連衝
+                if (vcfPath && vcfPath.length > 0) {
+                    console.log("VCF Solver found win path! Steps:", vcfPath.length, vcfPath);
+                    return vcfPath[0]; // 直接返回第一步絕殺
+                }
+
+                // 2. 檢查對手是否有 VCF 連續衝四絕殺。若有，優先防禦其起始落子點
+                const oppVcfPath = solveVCF(board, playerColor, 10, rulesEnabled);
+                if (oppVcfPath && oppVcfPath.length > 0) {
+                    const defMove = oppVcfPath[0];
+                    if (!(rulesEnabled && aiColor === 1 && checkForbidden(board, defMove.r, defMove.c, 1))) {
+                        console.log("VCF Solver found opponent win path! Defending at:", defMove);
+                        return defMove;
+                    }
+                }
+
+                // 3. 啟動迭代加深搜尋 (IDS)
                 TRANSPOSITION_TABLE.clear();
-
-                const hash = computeBoardHash(board);
-                let bestMove = null;
-                let bestVal = -Infinity;
-
-                const scoredCandidates = [];
-                for (let i = 0; i < candidates.length; i++) {
-                    const pos = candidates[i];
-                    if (rulesEnabled && aiColor === 1) {
-                        if (checkForbidden(board, pos.r, pos.c, 1)) continue;
-                    }
-                    const score = getImmediateScore(board, pos.r, pos.c, aiColor) + 
-                                  getImmediateScore(board, pos.r, pos.c, playerColor) * 1.25;
-                    scoredCandidates.push({ r: pos.r, c: pos.c, score });
-                }
-
-                if (scoredCandidates.length === 0) return candidates[0];
-
-                scoredCandidates.sort((a, b) => b.score - a.score);
+                KILLER_MOVES = Array(20).fill(null); // 重置殺手步
                 
-                // 置換表加成下，前 20 個候選點搜尋 4 步 (depth=3，AI-Player-AI-Player)
-                const limit = Math.min(scoredCandidates.length, 20);
-
-                for (let i = 0; i < limit; i++) {
-                    const move = scoredCandidates[i];
-                    board[move.r][move.c] = aiColor;
-                    const nextHash = hash ^ ZOBRIST_TABLE[move.r][move.c][aiColor];
+                startTime = Date.now();
+                isSearchTimeout = false;
+                nodeCount = 0;
+                
+                let bestMove = null;
+                const hash = computeBoardHash(board);
+                
+                // 迭代加深，深度從 1 遞增至 8 (相當於 9 層)
+                for (let depth = 1; depth <= 8; depth++) {
+                    // 若時間已經消耗了 80% 以上，則不再開啟新一輪更深層的搜尋
+                    if (Date.now() - startTime > timeLimit * 0.8) {
+                        break;
+                    }
                     
-                    // depth = 3 (搜尋 4 層：當前層 + 下面 3 層遞迴)
-                    const val = minimax(board, 3, -Infinity, Infinity, false, aiColor, move.r, move.c, nextHash, rulesEnabled);
-                    board[move.r][move.c] = 0; // 復原
-
-                    if (val > bestVal) {
-                        bestVal = val;
-                        bestMove = move;
+                    let currentDepthBestMove = null;
+                    let maxEval = -Infinity;
+                    
+                    // 獲取當前置換表中最優步
+                    const ttEntry = TRANSPOSITION_TABLE.get(hash);
+                    const ttBestMove = ttEntry ? ttEntry.bestMove : null;
+                    
+                    // 候選點加權排序
+                    const scoredCandidates = [];
+                    for (let i = 0; i < candidates.length; i++) {
+                        const pos = candidates[i];
+                        if (rulesEnabled && aiColor === 1) {
+                            if (checkForbidden(board, pos.r, pos.c, 1)) continue;
+                        }
+                        
+                        let score = getImmediateScore(board, pos.r, pos.c, aiColor) + 
+                                      getImmediateScore(board, pos.r, pos.c, playerColor) * 1.25;
+                        
+                        if (ttBestMove && ttBestMove.r === pos.r && ttBestMove.c === pos.c) {
+                            score += 10000000;
+                        }
+                        const killer = KILLER_MOVES[depth];
+                        if (killer && killer.r === pos.r && killer.c === pos.c) {
+                            score += 500000;
+                        }
+                        
+                        scoredCandidates.push({ r: pos.r, c: pos.c, score });
+                    }
+                    
+                    if (scoredCandidates.length === 0) {
+                        break;
+                    }
+                    
+                    scoredCandidates.sort((a, b) => b.score - a.score);
+                    
+                    // 執行當前層的搜尋
+                    for (let i = 0; i < scoredCandidates.length; i++) {
+                        if (isSearchTimeout) break;
+                        
+                        const move = scoredCandidates[i];
+                        board[move.r][move.c] = aiColor;
+                        const nextHash = hash ^ ZOBRIST_TABLE[move.r][move.c][aiColor];
+                        
+                        // 呼叫 minimax (depth - 1 代表剩餘遞迴層數)
+                        const val = minimax(board, depth - 1, -Infinity, Infinity, false, aiColor, move.r, move.c, nextHash, rulesEnabled);
+                        board[move.r][move.c] = 0; // 復原
+                        
+                        if (val > maxEval) {
+                            maxEval = val;
+                            currentDepthBestMove = move;
+                        }
+                    }
+                    
+                    // 只有當前深度完整搜完且沒有超時，我們才更新最佳著法
+                    if (!isSearchTimeout && currentDepthBestMove) {
+                        bestMove = currentDepthBestMove;
+                        console.log(`IDS Depth ${depth} completed in ${Date.now() - startTime}ms. Nodes: ${nodeCount}. BestMove: (${bestMove.r}, ${bestMove.c})`);
+                    } else {
+                        break; // 搜尋中斷，不再前記
                     }
                 }
-
-                return bestMove || scoredCandidates[0];
+                
+                return bestMove || scoredCandidates[0] || candidates[0];
             }
 
             return candidates[0];

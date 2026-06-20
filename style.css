@@ -1,4 +1,4 @@
-/* ==========================================================================
+﻿/* ==========================================================================
    CSS DESIGN SYSTEM & VARIABLE DEFINITIONS
    ========================================================================== */
 
@@ -651,6 +651,15 @@ body.theme-slate .board-wrapper {
     height: 100%;
     position: relative;
 }
+
+.gomoku-board.board-disabled .cell {
+    cursor: default;
+}
+
+.gomoku-board.board-disabled .cell .hover-preview {
+    display: none !important;
+}
+
 
 /* Individual cell on board represents an intersection */
 .cell {
@@ -1635,3 +1644,146 @@ body.theme-slate .board-wrapper.view-3d {
     pointer-events: none;
     animation: floatUpFade 2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
 }
+
+/* 棋盤中央開局引導提示 */
+.board-start-toast {
+    position: absolute;
+    top: 15%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(10, 15, 30, 0.88);
+    border: 1.5px solid var(--accent-primary);
+    box-shadow: 0 0 25px rgba(0, 242, 254, 0.45), inset 0 0 15px rgba(0, 242, 254, 0.2);
+    color: var(--text-primary);
+    padding: 16px 36px;
+    border-radius: 12px;
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: 2px;
+    z-index: 100;
+    pointer-events: none; /* 防止阻擋滑鼠落子點擊 */
+    transition: opacity 0.5s cubic-bezier(0.25, 1, 0.5, 1), transform 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    text-align: center;
+    white-space: nowrap;
+}
+
+.board-start-toast.fade-out {
+    opacity: 0;
+    transform: translate(-50%, -60%) scale(0.9);
+}
+
+/* ==========================================================================
+   NEW MODES: PUZZLE & REPLAY STYLE (殘局闖關與對局復盤)
+   ========================================================================== */
+
+/* 殘局關卡列表 */
+.puzzle-levels-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.puzzle-level-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.puzzle-level-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--accent-primary);
+    color: var(--text-primary);
+    transform: translateX(3px);
+}
+
+.puzzle-level-item.active {
+    background: rgba(0, 242, 254, 0.1);
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+    box-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
+}
+
+.puzzle-level-item.completed {
+    border-color: #00ff87;
+    background: rgba(0, 255, 135, 0.04);
+}
+
+.puzzle-level-item.completed:hover {
+    border-color: #00ff87;
+    background: rgba(0, 255, 135, 0.08);
+}
+
+.puzzle-level-item.locked {
+    opacity: 0.45;
+    cursor: not-allowed;
+    background: rgba(0, 0, 0, 0.25);
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+.puzzle-level-item.locked:hover {
+    transform: none;
+    border-color: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.puzzle-level-name {
+    font-weight: 600;
+}
+
+.puzzle-level-status {
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+/* 關卡選單滾動條美化 */
+.puzzle-levels-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.puzzle-levels-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 3px;
+}
+
+.puzzle-levels-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+}
+
+.puzzle-levels-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* 最後落子（正常對局與復盤）發光標記 */
+.cell.last-move-marker::after {
+    content: '';
+    position: absolute;
+    width: 60%;
+    height: 60%;
+    border: 2px solid var(--accent-primary);
+    box-shadow: 0 0 8px var(--accent-primary);
+    border-radius: 50%;
+    box-sizing: border-box;
+    pointer-events: none;
+    z-index: 5;
+    animation: lastMoveFlash 1.5s infinite ease-in-out;
+}
+
+@keyframes lastMoveFlash {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.1); }
+}
+
+

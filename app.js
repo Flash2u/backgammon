@@ -1,7 +1,9 @@
-import { game, state } from './src/game.js';
-import { ui } from './src/ui.js';
-import { audio } from './src/audio.js';
-import { p2p } from './src/p2p.js';
+﻿import { game, state } from './src/game.js?v=1.9.5';
+import { ui } from './src/ui.js?v=1.9.5';
+import { audio } from './src/audio.js?v=1.9.5';
+import { p2p } from './src/p2p.js?v=1.9.5';
+
+
 
 document.addEventListener('DOMContentLoaded', () => {
     let isUndoing = false;
@@ -44,12 +46,33 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================================================
     // 遊戲狀態重置與同步
     // ==========================================================================
+    function showStartToast() {
+        if (state.history.length > 0) return; // 如果已經有落子歷史，就不再顯示開局提示
+        let toastText = '';
+        if (state.gameMode === 'ai') {
+            if (state.playerColor === 1) {
+                toastText = '🎮 遊戲開始：您執黑棋先手。請您 (黑棋) 先手落子';
+            } else {
+                toastText = '🎮 遊戲開始：您執白棋後手。AI (黑棋) 思考落子中...';
+            }
+        } else if (state.gameMode === 'p2p') {
+            if (p2p.getMyColor() === 1) {
+                toastText = '⚡ 遊戲開始：您執黑棋先手。請您 (黑棋) 先手落子';
+            } else {
+                toastText = '⚡ 遊戲開始：您執白棋後手。等待對手 (黑棋) 落子...';
+            }
+        } else {
+            toastText = '👥 遊戲開始：黑棋先手，白棋後手。請黑棋先手落子';
+        }
+        ui.showBoardStartToast(toastText);
+    }
+
     function resetGame() {
         game.reset();
         resetTimer();
         
         // P2P 模式下，同步我的顏色給 UI
-        if (state.gameMode === 'pvp' && p2p.isConnected()) {
+        if (state.gameMode === 'p2p' && p2p.isConnected()) {
             state.playerColor = p2p.getMyColor();
         } else {
             // 人機模式下每次重開自動輪換玩家顏色，增加樂趣
@@ -63,6 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         syncGameUI();
         startTimer();
+        showStartToast();
 
         // 人機對戰下，若玩家是白棋(2)，AI(1)需主動下第一步
         if (state.gameMode === 'ai' && state.playerColor === 2 && !state.isGameOver) {
@@ -86,8 +110,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.board[r][c] !== 0) return;
 
         // P2P 模式限制
-        if (state.gameMode === 'pvp' && p2p.isConnected()) {
-            if (state.currentTurn !== p2p.getMyColor()) return;
+        if (state.gameMode === 'p2p') {
+            if (!p2p.isConnected() || state.currentTurn !== p2p.getMyColor()) return;
         }
 
         // 人機對戰模式限制
@@ -114,11 +138,16 @@ document.addEventListener('DOMContentLoaded', () => {
         audio.playStone();
         ui.renderStone(r, c, activeColor);
 
+        // 如果是第一手，隱藏開局提示
+        if (state.history.length === 0) {
+            ui.hideBoardStartToast();
+        }
+
         // 更新遊戲核心狀態
         const result = game.makeMove(r, c, activeColor);
 
         // 如果是 P2P 連線對戰，將落子同步傳給對手
-        if (state.gameMode === 'pvp' && p2p.isConnected()) {
+        if (state.gameMode === 'p2p' && p2p.isConnected()) {
             p2p.sendMessage({
                 type: 'move',
                 r: r,
@@ -196,7 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.history.length === 0 || state.isGameOver || state.isAiThinking || isUndoing) return;
 
         // P2P 模式下，需徵求對手同意
-        if (state.gameMode === 'pvp' && p2p.isConnected()) {
+        if (state.gameMode === 'p2p' && p2p.isConnected()) {
             if (state.currentTurn !== p2p.getMyColor()) {
                 ui.showP2PToast('⚠️ 只有在您的回合才能申請悔棋', true);
                 return;
@@ -225,6 +254,9 @@ document.addEventListener('DOMContentLoaded', () => {
         let animCount = undoResult.removedStones.length;
         if (animCount === 0) {
             syncGameUI();
+            if (state.history.length === 0) {
+                showStartToast();
+            }
             isUndoing = false;
         } else {
             undoResult.removedStones.forEach(({ r, c }) => {
@@ -232,6 +264,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     animCount--;
                     if (animCount === 0) {
                         syncGameUI();
+                        if (state.history.length === 0) {
+                            showStartToast();
+                        }
                         isUndoing = false;
                     }
                 });
@@ -245,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleP2PData(data) {
         switch (data.type) {
             case 'init':
-                // 同步房主的對局與規則
+                // 同步房主的對局與规则
                 state.rulesMode = data.rulesMode;
                 ui.updateSettingButtons('rulesMode', state.rulesMode);
                 state.board = data.board;
@@ -256,6 +291,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 syncGameUI();
                 startTimer();
+                showStartToast();
                 break;
 
             case 'move':
@@ -374,7 +410,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ui.init(state, {
             onCellClick: (r, c) => handleCellClick(r, c),
             onRestartClick: () => {
-                if (state.gameMode === 'pvp' && p2p.isConnected()) {
+                if (state.gameMode === 'p2p' && p2p.isConnected()) {
                     ui.showP2PToast('已向對手發送重新對局請求...');
                     p2p.sendMessage({ type: 'restart-request' });
                     return;
@@ -428,7 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 p2p.connect(peerId);
             },
             onSendChat: (text) => {
-                if (state.gameMode === 'pvp' && p2p.isConnected()) {
+                if (state.gameMode === 'p2p' && p2p.isConnected()) {
                     p2p.sendMessage({
                         type: 'chat',
                         text: text
@@ -437,7 +473,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             },
             onSendEmoji: (emoji) => {
-                if (state.gameMode === 'pvp' && p2p.isConnected()) {
+                if (state.gameMode === 'p2p' && p2p.isConnected()) {
                     p2p.sendMessage({
                         type: 'emoji',
                         emoji: emoji
@@ -449,7 +485,7 @@ document.addEventListener('DOMContentLoaded', () => {
             onSettingChange: (name, value) => {
                 // 處理對弈選項變更
                 if (name === 'gameMode') {
-                    if (value === 'pvp') {
+                    if (value === 'p2p') {
                         // 切換到 P2P 模式
                         p2p.init();
                     } else {
@@ -472,7 +508,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     resetGame();
                     
                     // 同步給對手
-                    if (state.gameMode === 'pvp' && p2p.isConnected()) {
+                    if (state.gameMode === 'p2p' && p2p.isConnected()) {
                         p2p.sendMessage({
                             type: 'sync-settings',
                             rulesMode: value
@@ -499,9 +535,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             },
             onPeerConnected: (oppId, myColor) => {
-                if (state.gameMode !== 'pvp') {
-                    state.gameMode = 'pvp';
-                    ui.updateSettingButtons('gameMode', 'pvp');
+                if (state.gameMode !== 'p2p') {
+                    state.gameMode = 'p2p';
+                    ui.updateSettingButtons('gameMode', 'p2p');
                 }
                 if (myColor === 1) { // 房主
                     if (state.p2pReconnecting) {
@@ -535,3 +571,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initGame();
 });
+
+

@@ -154,6 +154,42 @@ export const audio = {
         }
     },
 
+    playLose() {
+        if (!soundEnabled) return;
+        try {
+            initAudio();
+            const now = audioCtx.currentTime;
+            // 失敗音效：低沉的向下半音階 (G3, F#3, F3, E3)
+            const freqs = [196.00, 185.00, 174.61, 164.81];
+
+            freqs.forEach((freq, idx) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'sawtooth'; // 稍微粗糙一點的鋸齒波，表現失落感
+                osc.frequency.setValueAtTime(freq, now + idx * 0.15);
+
+                gain.gain.setValueAtTime(0, now + idx * 0.15);
+                gain.gain.linearRampToValueAtTime(0.12, now + idx * 0.15 + 0.05);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.15 + 0.6);
+
+                const lp = audioCtx.createBiquadFilter();
+                lp.type = 'lowpass';
+                lp.frequency.setValueAtTime(600, now); // 低通濾波，使聲音沉悶
+
+                osc.connect(lp);
+                lp.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(now + idx * 0.15);
+                osc.stop(now + idx * 0.15 + 0.7);
+            });
+        } catch (e) {
+            console.warn("Failed to play lose sound", e);
+        }
+    },
+
+
     toggleSound() {
         soundEnabled = !soundEnabled;
         return soundEnabled;

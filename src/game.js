@@ -1,17 +1,25 @@
-export const BOARD_SIZE = 15;
+﻿export const BOARD_SIZE = 15;
 
 // 單例狀態
 export const state = {
     board: [],
     currentTurn: 1,
     isGameOver: false,
-    gameMode: 'ai',        // 'ai' 或 'pvp'
+    gameMode: 'ai',        // 'ai', 'pvp', 'p2p' 或 'puzzle'
     aiDifficulty: 'medium',// 'easy', 'medium', 'hard'
-    history: [],           // 悔棋歷史
+    history: [],           // 悔棋歷史快照
+    moveRecord: [],        // 完整的對局落子歷史軌跡 [{r, c, color}]
+    isReplayMode: false,   // 是否正處於對局復盤狀態
+    replayIndex: 0,        // 復盤當前展示的手數
+    currentPuzzleId: null, // 當前挑戰的殘局 ID (無則為 null)
+    puzzleMovesUsed: 0,    // 殘局已用步數
+    puzzleMaxMoves: 0,     // 殘局限制步數
     lastMove: null,        // { r, c }
-    playerColor: 1,        // 人機模式下玩家顏色 (1: 黑, 2: 白)
+    playerColor: 1,        // 玩家顏色 (1: 黑, 2: 白)
     nextGamePlayerColor: 1,
     rulesMode: 'standard', // 'standard' 或 'renju'
+    hintEnabled: true,     // 預設開啟威脅提示
+    viewMode: '2d',        // 預設 2D 視角
     p2pReconnecting: false,// P2P 是否正在重連
     stats: {
         playerWins: 0,
@@ -30,6 +38,9 @@ export const game = {
         state.currentTurn = 1;
         state.isGameOver = false;
         state.history = [];
+        state.moveRecord = [];
+        state.isReplayMode = false;
+        state.replayIndex = 0;
         state.lastMove = null;
         this.terminateAI();
     },
@@ -48,6 +59,9 @@ export const game = {
             currentTurn: state.currentTurn,
             lastMove: state.lastMove ? { ...state.lastMove } : null
         });
+
+        // 記錄落子軌跡
+        state.moveRecord.push({ r, c, color });
 
         state.board[r][c] = color;
         state.lastMove = { r, c };
@@ -93,6 +107,9 @@ export const game = {
         for (let i = 0; i < stepsToUndo; i++) {
             if (state.history.length > 0) {
                 targetState = state.history.pop();
+            }
+            if (state.moveRecord.length > 0) {
+                state.moveRecord.pop();
             }
         }
 
@@ -200,36 +217,57 @@ export const game = {
     createsLiveFour(r, c, color) {
         // 模擬在 (r, c) 落子
         state.board[r][c] = color;
-        let formsFour = false;
+        let formsLiveFour = false;
         
         // 掃描方向
         const dirs = [
             [0, 1], [1, 0], [1, 1], [1, -1]
         ];
         
-        // 檢查在 (r, c) 落子後，是否會使同方向其他空格變成可以直接「成五」的點
-        // 若能形成，即代表此落子能創造出「活四」或「衝四」威脅，需發出警告提示
+        // 滑動視窗檢測法：落子後，該方向必須包含至少一個 [0, color, color, color, color, 0] 的標準活四區間
         for (let d = 0; d < dirs.length; d++) {
             const [dr, dc] = dirs[d];
-            for (let step = -4; step <= 4; step++) {
-                if (step === 0) continue;
-                const nr = r + step * dr;
-                const nc = c + step * dc;
-                if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE) {
-                    if (state.board[nr][nc] === 0) {
-                        if (this.completesFive(nr, nc, color)) {
-                            formsFour = true;
+            
+            // 視窗長度為 6，包含 (r, c)。(r, c) 可以位於視窗的索引 1, 2, 3, 4
+            // 因此起點相對於 (r, c) 的偏移量 i 為 -4 到 -1
+            for (let i = -4; i <= -1; i++) {
+                let isMatch = true;
+                
+                for (let j = 0; j < 6; j++) {
+                    const step = i + j;
+                    const nr = r + step * dr;
+                    const nc = c + step * dc;
+                    
+                    if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) {
+                        isMatch = false;
+                        break;
+                    }
+                    
+                    const val = state.board[nr][nc];
+                    if (j === 0 || j === 5) {
+                        if (val !== 0) {
+                            isMatch = false;
+                            break;
+                        }
+                    } else {
+                        if (val !== color) {
+                            isMatch = false;
                             break;
                         }
                     }
                 }
+                
+                if (isMatch) {
+                    formsLiveFour = true;
+                    break;
+                }
             }
-            if (formsFour) break;
+            if (formsLiveFour) break;
         }
         
         // 還原棋盤
         state.board[r][c] = 0;
-        return formsFour;
+        return formsLiveFour;
     },
 
     // 威脅掃描
@@ -269,7 +307,7 @@ export const game = {
         onStartThinking();
 
         try {
-            aiWorker = new Worker('ai_worker.js?v=1.2.0');
+            aiWorker = new Worker('ai_worker.js?v=1.9.5');
             aiWorker.onmessage = (e) => {
                 if (state.isGameOver) return;
                 const { bestMove, error } = e.data;
@@ -337,5 +375,48 @@ export const game = {
             pvpWhiteWins: 0
         };
         this.saveStats();
+    },
+
+    getReplayBoard(index) {
+        const board = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(0));
+        const limit = Math.min(index, state.moveRecord.length);
+        for (let i = 0; i < limit; i++) {
+            const m = state.moveRecord[i];
+            board[m.r][m.c] = m.color;
+        }
+        return board;
+    },
+
+    exportToSGF() {
+        let sgf = `(;SZ[15]AP[CyberGomoku:v1.9.5]GN[五子棋對局]DT[${new Date().toISOString().split('T')[0]}]`;
+        
+        // 判定黑白棋手名稱
+        if (state.gameMode === 'ai') {
+            if (state.playerColor === 1) {
+                sgf += "PB[玩家]PW[AI]";
+            } else {
+                sgf += "PB[AI]PW[玩家]";
+            }
+        } else if (state.gameMode === 'p2p') {
+            sgf += "PB[玩家(本機)]PW[好友(線上)]";
+        } else if (state.gameMode === 'puzzle') {
+            sgf += `PB[玩家]PW[殘局關卡_${state.currentPuzzleId}]`;
+        } else {
+            sgf += "PB[黑棋(雙人)]PW[白棋(雙人)]";
+        }
+        
+        sgf += "\n";
+        
+        // 將 moveRecord 寫入
+        state.moveRecord.forEach(move => {
+            const colChar = String.fromCharCode(97 + move.c);
+            const rowChar = String.fromCharCode(97 + move.r);
+            const colorChar = move.color === 1 ? 'B' : 'W';
+            sgf += `;${colorChar}[${colChar}${rowChar}]`;
+        });
+        
+        sgf += ")";
+        return sgf;
     }
 };
+

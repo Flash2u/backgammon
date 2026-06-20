@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>極致美學五子棋 - Cyber Gomoku</title>
-    <link rel="stylesheet" href="style.css?v=1.9.0">
+    <link rel="stylesheet" href="style.css?v=1.9.5">
     <!-- Google Fonts: Inter & Outfit for modern look -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -47,6 +47,7 @@
                             <button class="active" data-mode="ai">人機對戰</button>
                             <button data-mode="pvp">雙人對決</button>
                             <button data-mode="p2p">線上對戰</button>
+                            <button data-mode="puzzle">殘局闖關</button>
                         </div>
                     </div>
 
@@ -107,6 +108,43 @@
                     <button id="btn-about" class="btn-secondary" style="width: 100%; margin-top: 12px;">
                         <span class="btn-icon">ℹ️</span> 關於遊戲
                     </button>
+                </div>
+
+                <!-- Puzzle Levels Card -->
+                <div class="glass-card puzzle-card" id="puzzle-card" style="display: none;">
+                    <h2 class="card-title" style="color: var(--accent-secondary);"><span class="btn-icon">🧩</span> 經典殘局闖關</h2>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
+                        限制步數內擊敗困難 AI，解鎖後續關卡！
+                    </p>
+                    <div id="puzzle-levels-list" class="puzzle-levels-list" style="max-height: 250px; overflow-y: auto; padding-right: 4px; margin-bottom: 12px;">
+                        <!-- 關卡項目會動態生成 -->
+                    </div>
+                    <div id="puzzle-status-panel" class="glass-card" style="padding: 10px; background: rgba(255, 255, 255, 0.02); display: none; border-color: rgba(255, 255, 255, 0.05); box-sizing: border-box;">
+                        <h3 id="puzzle-level-title" style="font-size: 0.85rem; margin-bottom: 6px; color: var(--accent-primary); font-weight: bold;">關卡</h3>
+                        <p id="puzzle-level-desc" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.4;"></p>
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
+                            <span>限制步數：<strong id="puzzle-limit-text" style="color: var(--accent-secondary);">0</strong> 步</span>
+                            <span>已用步數：<strong id="puzzle-used-text" style="color: var(--text-primary);">0</strong> 步</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Replay Card -->
+                <div class="glass-card replay-card" id="replay-card" style="display: none;">
+                    <h2 class="card-title" style="color: var(--accent-primary);"><span class="btn-icon">🔍</span> 對局復盤</h2>
+                    <div id="replay-status" style="font-size: 0.85rem; text-align: center; margin-bottom: 12px; color: var(--text-secondary); background: rgba(0, 242, 254, 0.1); padding: 8px; border-radius: 6px; border: 1px solid rgba(0, 242, 254, 0.2); font-weight: bold;">
+                        第 0 / 0 手
+                    </div>
+                    <div class="btn-row" style="margin-bottom: 12px; display: flex; gap: 8px;">
+                        <button id="btn-replay-first" class="btn-secondary" style="flex: 1; padding: 10px 0; margin-top: 0;" title="回到起點">⏪</button>
+                        <button id="btn-replay-prev" class="btn-secondary" style="flex: 1; padding: 10px 0; margin-top: 0;" title="上一手">◀</button>
+                        <button id="btn-replay-next" class="btn-secondary" style="flex: 1; padding: 10px 0; margin-top: 0;" title="下一手">▶</button>
+                        <button id="btn-replay-last" class="btn-secondary" style="flex: 1; padding: 10px 0; margin-top: 0;" title="回到終點">⏩</button>
+                    </div>
+                    <div class="btn-row" style="display: flex; gap: 8px;">
+                        <button id="btn-replay-export" class="btn-primary" style="flex: 1; margin-top: 0;">💾 匯出 SGF</button>
+                        <button id="btn-replay-exit" class="btn-secondary" style="flex: 1; margin-top: 0;">❌ 退出</button>
+                    </div>
                 </div>
 
                 <!-- P2P Connection Card -->
@@ -174,6 +212,7 @@
                 <div class="board-wrapper">
                     <!-- The Gomoku Board -->
                     <div id="gomoku-board" class="gomoku-board"></div>
+                    <div id="board-start-toast" class="board-start-toast"></div>
                 </div>
             </section>
         </main>
@@ -187,6 +226,8 @@
             <p id="modal-message" class="modal-message">黑子五子連珠，贏得本局！</p>
             <div class="modal-actions">
                 <button id="btn-modal-restart" class="btn-primary">再玩一局</button>
+                <button id="btn-modal-replay" class="btn-secondary">歷史復盤</button>
+                <button id="btn-modal-export" class="btn-secondary">💾 匯出 SGF 棋譜</button>
                 <button id="btn-modal-close" class="btn-secondary">查看棋盤</button>
             </div>
         </div>
@@ -199,11 +240,11 @@
             <h2 class="modal-title">關於遊戲</h2>
             <div class="modal-scroll-area">
                 <p style="margin-bottom: 12px; font-weight: 600; text-align: center; font-size: 1rem; color: var(--text-primary);">🌌 Cyber Gomoku - 極致美學五子棋</p>
-                <p style="margin-bottom: 6px;"><strong>目前版本：</strong>v1.9.0</p>
+                <p style="margin-bottom: 6px;"><strong>目前版本：</strong>v1.9.2</p>
                 <p style="margin-bottom: 6px;"><strong>發布日期：</strong>2026-06-20</p>
                 <p style="margin-bottom: 12px;"><strong>開發團隊：</strong>Antigravity AI Co-Pilot & Yuki</p>
                 <hr>
-                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">🛠️ 本版本摘要 (v1.9.0)：</p>
+                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">🛠️ 本版本摘要 (v1.9.2)：</p>
                 <ul>
                     <li>🔄 **自動重連與對局恢復**：當連線中斷時儲存棋局快照，背景 30 秒自動重新連入與無縫對局恢復。</li>
                     <li>💓 **心跳包 Keep-Alive**：背景每 15 秒發送 ping/pong，防止局域網與 NAT 閒置超時斷線。</li>
@@ -245,7 +286,9 @@
 
     <!-- Load scripts at the end -->
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-    <script src="ai.js?v=1.9.0"></script>
-    <script type="module" src="app.js?v=1.9.0"></script>
+    <script src="ai.js?v=1.9.5"></script>
+    <script type="module" src="app.js?v=1.9.5"></script>
 </body>
 </html>
+
+

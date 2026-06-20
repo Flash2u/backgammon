@@ -203,7 +203,7 @@ export const p2p = {
         p2pConn = null;
 
         // 如果遊戲還在進行且屬於線上對戰，開啟 30 秒自動重連
-        if (wasConnected && state.gameMode === 'pvp' && !state.isGameOver && !state.p2pReconnecting) {
+        if (wasConnected && state.gameMode === 'p2p' && !state.isGameOver && !state.p2pReconnecting) {
             state.p2pReconnecting = true;
 
             // 儲存目前狀態至 LocalStorage
