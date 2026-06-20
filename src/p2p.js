@@ -434,7 +434,14 @@ export const p2p = {
         try {
             const res = await fetch(`${LOBBY_URL}/?values=true`, { signal: controller.signal });
             clearTimeout(timeoutId);
-            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+            if (!res.ok) {
+                if (res.status === 404) {
+                    // 404 在 kvdb 中代表沒有任何匹配的 keys (即大廳目前為空)
+                    callback([], null);
+                    return;
+                }
+                throw new Error(`HTTP error! status: ${res.status}`);
+            }
             const data = await res.json();
             const rooms = data.map(item => JSON.parse(item[1]));
             callback(rooms, null);
