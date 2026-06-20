@@ -1,7 +1,7 @@
-﻿import { game, state } from './src/game.js';
-import { ui } from './src/ui.js';
-import { audio } from './src/audio.js';
-import { p2p } from './src/p2p.js';
+﻿import { game, state } from './src/game.js?t=1782015853000';
+import { ui } from './src/ui.js?t=1782015853000';
+import { audio } from './src/audio.js?t=1782015853000';
+import { p2p } from './src/p2p.js?t=1782015853000';
 
 
 

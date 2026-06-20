@@ -1,5 +1,5 @@
-﻿import { BOARD_SIZE, game } from './game.js';
-import { PUZZLES, getPuzzleProgress, completePuzzle } from './puzzle.js';
+﻿import { BOARD_SIZE, game } from './game.js?t=1782015853000';
+import { PUZZLES, getPuzzleProgress, completePuzzle } from './puzzle.js?t=1782015853000';
 
 // ==========================================================================
 // GomokuDB: IndexedDB 本地數據庫 (棋譜 & 自訂關卡)
