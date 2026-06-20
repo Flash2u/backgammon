@@ -1,0 +1,747 @@
+import { BOARD_SIZE } from './game.js';
+
+export const ui = {
+    state: null,
+    handlers: null,
+    dom: {},
+
+    init(gameState, eventHandlers) {
+        this.state = gameState;
+        this.handlers = eventHandlers;
+
+        this.cacheDOM();
+        this.createBoardGrid();
+        this.bindEvents();
+        this.loadSettings();
+    },
+
+    cacheDOM() {
+        this.dom.board = document.getElementById('gomoku-board');
+        this.dom.boardWrapper = this.dom.board.parentElement;
+        this.dom.statusText = document.getElementById('status-text');
+        this.dom.turnDot = document.querySelector('.turn-dot');
+        this.dom.timer = document.getElementById('game-timer');
+        
+        this.dom.btnStart = document.getElementById('btn-start');
+        this.dom.btnUndo = document.getElementById('btn-undo');
+        this.dom.btnSound = document.getElementById('btn-sound');
+        this.dom.soundIcon = document.getElementById('sound-icon');
+        this.dom.btnClearStats = document.getElementById('btn-clear-stats');
+        
+        this.dom.modeButtons = document.querySelectorAll('#mode-select button');
+        this.dom.difficultyButtons = document.querySelectorAll('#difficulty-select button');
+        this.dom.difficultyGroup = document.getElementById('difficulty-group');
+        this.dom.themeButtons = document.querySelectorAll('.theme-selector button');
+        this.dom.hintButtons = document.querySelectorAll('#hint-select button');
+        this.dom.rulesButtons = document.querySelectorAll('#rules-select button');
+        this.dom.perspectiveButtons = document.querySelectorAll('#perspective-select button');
+        
+        // Win Modal
+        this.dom.winModal = document.getElementById('win-modal');
+        this.dom.modalTitle = document.getElementById('modal-title');
+        this.dom.modalMessage = document.getElementById('modal-message');
+        this.dom.btnModalRestart = document.getElementById('btn-modal-restart');
+        this.dom.btnModalClose = document.getElementById('btn-modal-close');
+
+        // P2P DOM
+        this.dom.p2pCard = document.getElementById('p2p-card');
+        this.dom.p2pMyId = document.getElementById('p2p-my-id');
+        this.dom.p2pStatus = document.getElementById('p2p-status');
+        this.dom.btnP2PInvite = document.getElementById('btn-p2p-invite');
+        this.dom.p2pPeerIdInput = document.getElementById('p2p-peer-id-input');
+        this.dom.btnP2PConnect = document.getElementById('btn-p2p-connect');
+        
+        // P2P Chat DOM
+        this.dom.p2pChatArea = document.getElementById('p2p-chat-area');
+        this.dom.chatMessages = document.getElementById('chat-messages');
+        this.dom.chatInput = document.getElementById('chat-input');
+        this.dom.btnSendChat = document.getElementById('btn-send-chat');
+
+        // P2P Confirm Modal
+        this.dom.p2pConfirmModal = document.getElementById('p2p-confirm-modal');
+        this.dom.p2pConfirmTitle = document.getElementById('p2p-confirm-title');
+        this.dom.p2pConfirmMessage = document.getElementById('p2p-confirm-message');
+        this.dom.btnP2PConfirmYes = document.getElementById('btn-p2p-confirm-yes');
+        this.dom.btnP2PConfirmNo = document.getElementById('btn-p2p-confirm-no');
+
+        // About Modal
+        this.dom.btnAbout = document.getElementById('btn-about');
+        this.dom.aboutModal = document.getElementById('about-modal');
+        this.dom.btnAboutClose = document.getElementById('btn-about-close');
+    },
+
+    createBoardGrid() {
+        this.dom.board.innerHTML = '';
+        
+        // 星位坐標 (15x15 的 3, 11 行與列，還有天元 7,7)
+        const stars = [
+            { r: 3, c: 3 }, { r: 3, c: 11 },
+            { r: 7, c: 7 },
+            { r: 11, c: 3 }, { r: 11, c: 11 }
+        ];
+
+        for (let r = 0; r < BOARD_SIZE; r++) {
+            for (let c = 0; c < BOARD_SIZE; c++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.row = r;
+                cell.dataset.col = c;
+
+                // 星位
+                const isStar = stars.some(star => star.r === r && star.c === c);
+                if (isStar) {
+                    const starDot = document.createElement('div');
+                    starDot.className = 'star';
+                    cell.appendChild(starDot);
+                }
+
+                // 3D hover 預覽棋子容器
+                const hoverPreview = document.createElement('div');
+                hoverPreview.className = 'hover-preview';
+                
+                const hoverStone = document.createElement('div');
+                hoverStone.className = 'stone';
+                hoverPreview.appendChild(hoverStone);
+                cell.appendChild(hoverPreview);
+
+                this.dom.board.appendChild(cell);
+            }
+        }
+    },
+
+    bindEvents() {
+        // 棋盤點擊委託與物理近鄰命中補償
+        this.dom.boardWrapper.addEventListener('click', (e) => {
+            if (this.state.isGameOver || this.state.isAiThinking) return;
+
+            const cell = e.target.closest('.cell');
+            if (cell) {
+                const r = parseInt(cell.dataset.row);
+                const c = parseInt(cell.dataset.col);
+                this.handlers.onCellClick(r, c);
+                return;
+            }
+
+            // Proximity 命中補償
+            let minDistance = Infinity;
+            let closestCell = null;
+            const cells = this.dom.board.querySelectorAll('.cell');
+            
+            cells.forEach(c => {
+                const rect = c.getBoundingClientRect();
+                const cx = rect.left + rect.width / 2;
+                const cy = rect.top + rect.height / 2;
+                const dist = Math.hypot(e.clientX - cx, e.clientY - cy);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    closestCell = c;
+                }
+            });
+
+            if (closestCell && minDistance < closestCell.offsetWidth * 1.5) {
+                const r = parseInt(closestCell.dataset.row);
+                const c = parseInt(closestCell.dataset.col);
+                this.handlers.onCellClick(r, c);
+            }
+        });
+
+        // 3D 滑鼠隨動高光反射
+        this.dom.boardWrapper.addEventListener('mousemove', (e) => {
+            if (this.state.viewMode !== '3d') return;
+            
+            const rect = this.dom.boardWrapper.getBoundingClientRect();
+            const x = e.clientX - rect.left - rect.width / 2;
+            const y = e.clientY - rect.top - rect.height / 2;
+            
+            const pctX = x / (rect.width / 2);
+            const pctY = y / (rect.height / 2);
+            
+            this.dom.boardWrapper.style.setProperty('--light-x', pctX.toFixed(3));
+            this.dom.boardWrapper.style.setProperty('--light-y', pctY.toFixed(3));
+        });
+
+        this.dom.boardWrapper.addEventListener('mouseleave', () => {
+            if (this.state.viewMode !== '3d') return;
+            this.dom.boardWrapper.style.setProperty('--light-x', '0');
+            this.dom.boardWrapper.style.setProperty('--light-y', '0');
+        });
+
+        // 重新開始
+        this.dom.btnStart.addEventListener('click', () => this.handlers.onRestartClick());
+        this.dom.btnModalRestart.addEventListener('click', () => {
+            this.dom.winModal.classList.remove('active');
+            this.handlers.onRestartClick();
+        });
+
+        // 悔棋
+        this.dom.btnUndo.addEventListener('click', () => this.handlers.onUndoClick());
+
+        // 音效
+        this.dom.btnSound.addEventListener('click', () => this.handlers.onSoundToggle());
+
+        // 清除數據
+        this.dom.btnClearStats.addEventListener('click', () => this.handlers.onClearStatsClick());
+
+        // 關於 Modal
+        this.dom.btnAbout.addEventListener('click', () => this.dom.aboutModal.classList.add('active'));
+        this.dom.btnAboutClose.addEventListener('click', () => this.dom.aboutModal.classList.remove('active'));
+        this.dom.aboutModal.addEventListener('click', (e) => {
+            if (e.target === this.dom.aboutModal) {
+                this.dom.aboutModal.classList.remove('active');
+            }
+        });
+
+        this.dom.btnModalClose.addEventListener('click', () => this.dom.winModal.classList.remove('active'));
+
+        // P2P 邀請複製
+        this.dom.btnP2PInvite.addEventListener('click', () => this.handlers.onP2PInviteClick());
+
+        // P2P 連線
+        this.dom.btnP2PConnect.addEventListener('click', () => {
+            const peerId = this.dom.p2pPeerIdInput.value.trim();
+            this.handlers.onP2PConnectClick(peerId);
+        });
+
+        // P2P 聊天發送
+        this.dom.btnSendChat.addEventListener('click', () => {
+            const text = this.dom.chatInput.value.trim();
+            if (text && this.handlers.onSendChat) {
+                this.handlers.onSendChat(text);
+                this.dom.chatInput.value = '';
+            }
+        });
+
+        this.dom.chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const text = this.dom.chatInput.value.trim();
+                if (text && this.handlers.onSendChat) {
+                    this.handlers.onSendChat(text);
+                    this.dom.chatInput.value = '';
+                }
+            }
+        });
+
+        // 表情按鈕點擊
+        this.dom.p2pChatArea.querySelectorAll('.emoji-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const emoji = btn.dataset.emoji;
+                if (emoji && this.handlers.onSendEmoji) {
+                    this.handlers.onSendEmoji(emoji);
+                }
+            });
+        });
+
+        // 快捷字句點擊
+        this.dom.p2pChatArea.querySelectorAll('.quick-msg-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const msg = btn.dataset.msg;
+                if (msg && this.handlers.onSendChat) {
+                    this.handlers.onSendChat(msg);
+                }
+            });
+        });
+
+        // 模式、難度、主題、提示、規則、視角按鈕綁定
+        this.bindSelectionButtons();
+    },
+
+    bindSelectionButtons() {
+        // 模式
+        this.dom.modeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const mode = btn.dataset.mode;
+                this.handlers.onSettingChange('gameMode', mode);
+            });
+        });
+
+        // 難度
+        this.dom.difficultyButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const diff = btn.dataset.diff;
+                this.handlers.onSettingChange('aiDifficulty', diff);
+            });
+        });
+
+        // 提示
+        this.dom.hintButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const enabled = btn.dataset.hint === 'on';
+                this.handlers.onSettingChange('hintEnabled', enabled);
+            });
+        });
+
+        // 規則
+        this.dom.rulesButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const rules = btn.dataset.rules;
+                this.handlers.onSettingChange('rulesMode', rules);
+            });
+        });
+
+        // 主題
+        this.dom.themeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const theme = btn.dataset.theme;
+                this.setTheme(theme);
+            });
+        });
+
+        // 視角
+        this.dom.perspectiveButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const view = btn.dataset.view;
+                this.setPerspectiveView(view);
+            });
+        });
+    },
+
+    loadSettings() {
+        // 從系統狀態恢復 UI 樣式
+        this.setTheme(localStorage.getItem('gomoku_theme') || 'neon');
+        this.setPerspectiveView(localStorage.getItem('gomoku_perspective') || '2d');
+    },
+
+    setTheme(theme) {
+        document.body.classList.remove('theme-neon', 'theme-wood', 'theme-slate');
+        document.body.classList.add(`theme-${theme}`);
+        localStorage.setItem('gomoku_theme', theme);
+
+        this.dom.themeButtons.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.theme === theme);
+        });
+    },
+
+    setPerspectiveView(view) {
+        this.state.viewMode = view;
+        this.dom.boardWrapper.classList.toggle('view-3d', view === '3d');
+        localStorage.setItem('gomoku_perspective', view);
+
+        this.dom.perspectiveButtons.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.view === view);
+        });
+    },
+
+    renderBoard() {
+        const cells = this.dom.board.querySelectorAll('.cell');
+        cells.forEach(cell => {
+            const r = parseInt(cell.dataset.row);
+            const c = parseInt(cell.dataset.col);
+            const color = this.state.board[r][c];
+
+            cell.classList.remove('has-stone');
+            const stone = cell.querySelector('.stone');
+            if (stone && !stone.classList.contains('stone-undoing')) {
+                stone.remove();
+            }
+
+            if (color !== 0) {
+                cell.classList.add('has-stone');
+                
+                // 如果已經在播放悔棋動畫，則不要覆蓋它
+                if (!cell.querySelector('.stone')) {
+                    const stoneEl = document.createElement('div');
+                    stoneEl.className = `stone ${color === 1 ? 'black' : 'white'}`;
+                    cell.appendChild(stoneEl);
+                }
+            }
+        });
+
+        this.updateUndoButtonState();
+    },
+
+    renderStone(r, c, color) {
+        const cell = this.dom.board.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+        if (!cell) return;
+
+        cell.classList.add('has-stone');
+        
+        // 避免重複生成
+        let stone = cell.querySelector('.stone');
+        if (stone) stone.remove();
+
+        stone = document.createElement('div');
+        stone.className = `stone ${color === 1 ? 'black' : 'white'}`;
+        cell.appendChild(stone);
+
+        // 3D 物理墜落微震
+        if (this.state.viewMode === '3d') {
+            stone.style.animation = 'placeStone3D 0.26s cubic-bezier(0.25, 1, 0.5, 1) forwards';
+            
+            // 棋盤震顫
+            setTimeout(() => {
+                this.dom.boardWrapper.classList.add('impact-shake');
+                setTimeout(() => {
+                    this.dom.boardWrapper.classList.remove('impact-shake');
+                }, 240);
+            }, 200);
+        }
+
+        // 粒子效果
+        this.createPlacementParticles(cell, color);
+        this.updateUndoButtonState();
+    },
+
+    createPlacementParticles(cellEl, color) {
+        const rect = cellEl.getBoundingClientRect();
+        const boardRect = this.dom.board.getBoundingClientRect();
+        
+        const centerX = rect.left - boardRect.left + rect.width / 2;
+        const centerY = rect.top - boardRect.top + rect.height / 2;
+
+        const isThemeNeon = document.body.classList.contains('theme-neon');
+        const particleColor = color === 1 
+            ? (isThemeNeon ? '#00f2fe' : '#1e293b') 
+            : (isThemeNeon ? '#f472b6' : '#ffffff');
+
+        const particleCount = 10;
+
+        for (let i = 0; i < particleCount; i++) {
+            const p = document.createElement('div');
+            p.className = 'particle';
+
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 25 + Math.random() * 35;
+            const tx = Math.cos(angle) * distance;
+            const ty = Math.sin(angle) * distance;
+
+            p.style.setProperty('--tx', `${tx}px`);
+            p.style.setProperty('--ty', `${ty}px`);
+            
+            const size = 3 + Math.random() * 5;
+            p.style.width = `${size}px`;
+            p.style.height = `${size}px`;
+            p.style.background = particleColor;
+            
+            p.style.left = `${centerX}px`;
+            p.style.top = `${centerY}px`;
+
+            if (isThemeNeon) {
+                p.style.boxShadow = `0 0 6px ${particleColor}`;
+            }
+
+            this.dom.board.appendChild(p);
+
+            setTimeout(() => {
+                p.remove();
+            }, 600);
+        }
+    },
+
+    updateThreatHints(hints) {
+        this.clearThreatHints();
+        
+        hints.forEach(hint => {
+            const cell = this.dom.board.querySelector(`[data-row="${hint.r}"][data-col="${hint.c}"]`);
+            if (cell && !cell.querySelector('.threat-ring')) {
+                const ring = document.createElement('div');
+                ring.className = 'threat-ring';
+                
+                if (hint.isFatal) {
+                    ring.classList.add('threat-fatal');
+                } else {
+                    ring.classList.add('threat-warning');
+                }
+                
+                if (hint.black) ring.classList.add('threat-black');
+                if (hint.white) ring.classList.add('threat-white');
+
+                cell.appendChild(ring);
+            }
+        });
+    },
+
+    clearThreatHints() {
+        const rings = this.dom.board.querySelectorAll('.threat-ring');
+        rings.forEach(r => r.remove());
+    },
+
+    updateForbiddenMoves(forbiddenList) {
+        const cells = this.dom.board.querySelectorAll('.cell');
+        cells.forEach(c => c.classList.remove('forbidden'));
+
+        forbiddenList.forEach(pos => {
+            const cell = this.dom.board.querySelector(`[data-row="${pos.r}"][data-col="${pos.c}"]`);
+            if (cell) cell.classList.add('forbidden');
+        });
+    },
+
+    showForbiddenToast(type) {
+        let text = '此處為黑棋禁手點！';
+        if (type === 'double_three') text = '🚫 禁手：三三禁手！';
+        else if (type === 'double_four') text = '🚫 禁手：四四禁手！';
+        else if (type === 'overline') text = '🚫 禁手：長連禁手！';
+        
+        this.dom.statusText.innerText = text;
+        this.dom.statusText.style.color = '#ef4444';
+        
+        if (window.toastTimeout) {
+            clearTimeout(window.toastTimeout);
+        }
+        
+        window.toastTimeout = setTimeout(() => {
+            this.dom.statusText.style.color = '';
+            this.updateTurnUI();
+        }, 1500);
+    },
+
+    updateTurnUI() {
+        if (this.state.isGameOver) return;
+
+        const isP2P = this.state.gameMode === 'pvp' && this.handlers.isP2PConnected();
+        let myColor = null;
+        if (isP2P) {
+            myColor = this.handlers.getP2PMyColor();
+        }
+
+        const turnDotColor = this.state.currentTurn === 1 
+            ? 'var(--accent-primary)' 
+            : 'var(--accent-secondary)';
+
+        this.dom.turnDot.style.background = turnDotColor;
+        
+        if (isP2P) {
+            if (this.state.currentTurn === myColor) {
+                this.dom.statusText.innerText = '您的回合 (請落子)';
+                this.dom.statusText.style.color = 'var(--accent-primary)';
+            } else {
+                this.dom.statusText.innerText = '等待對手落子...';
+                this.dom.statusText.style.color = 'var(--text-secondary)';
+            }
+        } else {
+            if (this.state.gameMode === 'ai') {
+                if (this.state.currentTurn === this.state.playerColor) {
+                    this.dom.statusText.innerText = '您的回合 (請落子)';
+                    this.dom.statusText.style.color = 'var(--accent-primary)';
+                } else {
+                    this.dom.statusText.innerText = 'AI 思考中...';
+                    this.dom.statusText.style.color = 'var(--accent-secondary)';
+                }
+            } else {
+                this.dom.statusText.innerText = `${this.state.currentTurn === 1 ? '黑棋' : '白棋'}的回合`;
+                this.dom.statusText.style.color = 'var(--text-primary)';
+            }
+        }
+    },
+
+    updateTimerUI(seconds) {
+        const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+        const s = (seconds % 60).toString().padStart(2, '0');
+        this.dom.timer.innerText = `${m}:${s}`;
+    },
+
+    updateStatsUI(stats) {
+        const p1Label = document.getElementById('player1-label');
+        const p2Label = document.getElementById('player2-label');
+        const p1Wins = document.getElementById('stat-p1-wins');
+        const p2Wins = document.getElementById('stat-p2-wins');
+        const draws = document.getElementById('stat-draws');
+
+        if (this.state.gameMode === 'ai') {
+            if (p1Label) p1Label.innerText = '玩家勝';
+            if (p2Label) p2Label.innerText = 'AI勝';
+            if (p1Wins) p1Wins.innerText = stats.playerWins;
+            if (p2Wins) p2Wins.innerText = stats.aiWins;
+        } else {
+            if (p1Label) p1Label.innerText = '黑棋勝';
+            if (p2Label) p2Label.innerText = '白棋勝';
+            if (p1Wins) p1Wins.innerText = stats.pvpBlackWins;
+            if (p2Wins) p2Wins.innerText = stats.pvpWhiteWins;
+        }
+        if (draws) draws.innerText = stats.draws;
+    },
+
+    updateUndoButtonState() {
+        const isP2P = this.state.gameMode === 'pvp' && this.handlers.isP2PConnected();
+        this.dom.btnUndo.disabled = this.state.isGameOver || this.state.history.length === 0 || this.state.isAiThinking || (isP2P && this.state.currentTurn !== this.handlers.getP2PMyColor());
+    },
+
+    setSoundButtonUI(enabled) {
+        if (enabled) {
+            this.dom.soundIcon.innerText = '🔊';
+            this.dom.btnSound.innerHTML = '<span class="btn-icon" id="sound-icon">🔊</span> 音效: 開';
+        } else {
+            this.dom.soundIcon.innerText = '🔇';
+            this.dom.btnSound.innerHTML = '<span class="btn-icon" id="sound-icon">🔇</span> 音效: 關';
+        }
+        // 重新緩存 soundIcon
+        this.dom.soundIcon = document.getElementById('sound-icon');
+    },
+
+    setP2PStatus(status, color = '') {
+        this.dom.p2pStatus.innerText = status;
+        this.dom.p2pStatus.style.color = color;
+        this.updateChatAreaVisibility();
+    },
+
+    updateChatAreaVisibility() {
+        if (this.state.gameMode === 'pvp' && this.handlers.isP2PConnected()) {
+            this.dom.p2pChatArea.style.display = 'flex';
+        } else {
+            this.dom.p2pChatArea.style.display = 'none';
+        }
+    },
+
+    appendChatMessage(sender, text, type) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `chat-msg ${type || ''}`;
+        
+        const senderSpan = document.createElement('span');
+        senderSpan.className = 'msg-sender';
+        senderSpan.innerText = `${sender}: `;
+        
+        const textNode = document.createTextNode(text);
+        
+        msgDiv.appendChild(senderSpan);
+        msgDiv.appendChild(textNode);
+        
+        this.dom.chatMessages.appendChild(msgDiv);
+        this.dom.chatMessages.scrollTop = this.dom.chatMessages.scrollHeight;
+    },
+
+    showFloatingEmoji(emoji) {
+        const emojiDiv = document.createElement('div');
+        emojiDiv.className = 'floating-emoji';
+        emojiDiv.innerText = emoji;
+        
+        this.dom.boardWrapper.appendChild(emojiDiv);
+        
+        setTimeout(() => {
+            emojiDiv.remove();
+        }, 2000);
+    },
+
+    showP2PToast(message, isAlert = false) {
+        this.dom.statusText.innerText = message;
+        this.dom.statusText.style.color = isAlert ? '#ef4444' : 'var(--accent-secondary)';
+        
+        if (window.p2pToastTimeout) {
+            clearTimeout(window.p2pToastTimeout);
+        }
+        
+        window.p2pToastTimeout = setTimeout(() => {
+            this.dom.statusText.style.color = '';
+            this.updateTurnUI();
+        }, 3000);
+    },
+
+    setP2PMyId(id) {
+        this.dom.p2pMyId.innerText = id;
+    },
+
+    showP2PConfirmModal(title, msg, onYes, onNo) {
+        this.dom.p2pConfirmTitle.innerText = title;
+        this.dom.p2pConfirmMessage.innerText = msg;
+        this.dom.p2pConfirmModal.classList.add('active');
+
+        // 重新綁定 P2P 同意與拒絕事件
+        const newYes = this.dom.btnP2PConfirmYes.cloneNode(true);
+        const newNo = this.dom.btnP2PConfirmNo.cloneNode(true);
+        this.dom.btnP2PConfirmYes.parentNode.replaceChild(newYes, this.dom.btnP2PConfirmYes);
+        this.dom.btnP2PConfirmNo.parentNode.replaceChild(newNo, this.dom.btnP2PConfirmNo);
+        this.dom.btnP2PConfirmYes = newYes;
+        this.dom.btnP2PConfirmNo = newNo;
+
+        this.dom.btnP2PConfirmYes.addEventListener('click', () => {
+            this.hideP2PConfirmModal();
+            onYes();
+        });
+
+        this.dom.btnP2PConfirmNo.addEventListener('click', () => {
+            this.hideP2PConfirmModal();
+            onNo();
+        });
+    },
+
+    hideP2PConfirmModal() {
+        this.dom.p2pConfirmModal.classList.remove('active');
+    },
+
+    showGameEndModal(winner, winningStones) {
+        let titleText = '';
+        let msgText = '';
+
+        if (winner === 0) {
+            titleText = '平局！';
+            msgText = '棋盤已滿，雙方勢均力敵！';
+        } else {
+            // 高亮獲勝棋子
+            winningStones.forEach(pos => {
+                const cell = this.dom.board.querySelector(`[data-row="${pos.r}"][data-col="${pos.c}"]`);
+                if (cell) {
+                    const stone = cell.querySelector('.stone');
+                    if (stone) stone.classList.add('winning-stone');
+                }
+            });
+
+            if (this.state.gameMode === 'ai') {
+                if (winner === this.state.playerColor) {
+                    titleText = '🎉 恭喜獲勝！';
+                    msgText = `您成功擊敗了 [${this.getDiffName(this.state.aiDifficulty)}] AI！`;
+                } else {
+                    titleText = '💀 遺憾落敗...';
+                    msgText = `您被 [${this.getDiffName(this.state.aiDifficulty)}] AI 擊敗了，再接再厲！`;
+                }
+            } else {
+                titleText = '🏆 棋局已分！';
+                msgText = `恭喜 ${winner === 1 ? '先手黑棋' : '後手白棋'} 贏得本場勝利！`;
+            }
+        }
+
+        this.dom.modalTitle.innerText = titleText;
+        this.dom.modalMessage.innerText = msgText;
+        this.dom.winModal.classList.add('active');
+        this.dom.btnUndo.disabled = true;
+    },
+
+    getDiffName(diff) {
+        switch(diff) {
+            case 'easy': return '簡單';
+            case 'medium': return '中等';
+            case 'hard': return '困難';
+            default: return '未知';
+        }
+    },
+
+    updateSettingButtons(name, value) {
+        if (name === 'gameMode') {
+            this.dom.modeButtons.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === value);
+            });
+            this.dom.difficultyGroup.style.display = value === 'ai' ? 'block' : 'none';
+            this.dom.p2pCard.style.display = value === 'pvp' ? 'block' : 'none';
+            this.updateChatAreaVisibility();
+        } else if (name === 'aiDifficulty') {
+            this.dom.difficultyButtons.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.diff === value);
+            });
+        } else if (name === 'hintEnabled') {
+            this.dom.hintButtons.forEach(btn => {
+                const isBtnOn = btn.dataset.hint === 'on';
+                btn.classList.toggle('active', isBtnOn === value);
+            });
+        } else if (name === 'rulesMode') {
+            this.dom.rulesButtons.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.rules === value);
+            });
+        }
+    },
+
+    animateUndoStone(r, c, onComplete) {
+        const cell = this.dom.board.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+        if (cell) {
+            const stone = cell.querySelector('.stone');
+            if (stone) {
+                stone.classList.add('stone-undoing');
+                setTimeout(() => {
+                    stone.remove();
+                    cell.classList.remove('has-stone');
+                    onComplete();
+                }, 350);
+            } else {
+                onComplete();
+            }
+        } else {
+            onComplete();
+        }
+    }
+};

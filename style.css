@@ -1496,3 +1496,142 @@ body.theme-slate .board-wrapper.view-3d {
     animation: removeStone3D 0.35s cubic-bezier(0.25, 1, 0.5, 1) forwards !important;
     pointer-events: none;
 }
+
+/* ==========================================================================
+   線上對弈聊天室與表情包樣式 (v1.9.0)
+   ========================================================================== */
+.p2p-chat-area {
+    margin-top: 12px;
+    border-top: 1px solid var(--card-border);
+    padding-top: 12px;
+    display: flex;
+    flex-direction: column;
+}
+
+.p2p-chat-label {
+    font-size: 0.8rem;
+    margin-bottom: 6px;
+    display: block;
+    color: var(--text-secondary);
+}
+
+.chat-messages {
+    height: 120px;
+    overflow-y: auto;
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.25);
+    margin-bottom: 8px;
+    font-size: 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    scroll-behavior: smooth;
+}
+
+.chat-msg {
+    word-break: break-all;
+    line-height: 1.4;
+}
+
+.chat-msg.system {
+    color: var(--accent-secondary);
+    font-style: italic;
+    font-size: 0.75rem;
+}
+
+.chat-msg.me {
+    color: #a5f3fc; /* Cyan-200 / Accent light */
+}
+
+.chat-msg.opponent {
+    color: #fca5a5; /* Red-200 */
+}
+
+.chat-msg .msg-sender {
+    font-weight: 600;
+}
+
+.emoji-row {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 8px;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.emoji-btn, .quick-msg-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--card-border);
+    border-radius: 4px;
+    padding: 4px 6px;
+    cursor: pointer;
+    color: #fff;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.quick-msg-btn {
+    font-size: 0.75rem;
+}
+
+.emoji-btn:hover, .quick-msg-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: var(--accent-primary);
+    transform: translateY(-1px);
+}
+
+.emoji-btn:active, .quick-msg-btn:active {
+    transform: translateY(0);
+}
+
+.chat-input-row {
+    display: flex;
+    gap: 8px;
+}
+
+.chat-input-row input {
+    flex: 1;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--card-border);
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    font-size: 0.8rem;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.chat-input-row input:focus {
+    border-color: var(--accent-primary);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.chat-input-row button {
+    padding: 6px 12px;
+    margin-top: 0;
+    font-size: 0.8rem;
+    height: 30px;
+    white-space: nowrap;
+}
+
+/* 漂浮表情動畫 (在大棋盤中間漂浮，增加趣味性) */
+@keyframes floatUpFade {
+    0% { transform: translate(-50%, -50%) scale(0.5) translateY(20px); opacity: 0; }
+    15% { transform: translate(-50%, -50%) scale(1.4) translateY(0px); opacity: 1; }
+    80% { transform: translate(-50%, -50%) scale(1) translateY(-40px); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(0.8) translateY(-80px); opacity: 0; }
+}
+
+.floating-emoji {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 4rem;
+    z-index: 1000;
+    pointer-events: none;
+    animation: floatUpFade 2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}

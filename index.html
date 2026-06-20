@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>極致美學五子棋 - Cyber Gomoku</title>
-    <link rel="stylesheet" href="style.css?v=1.7.0">
+    <link rel="stylesheet" href="style.css?v=1.9.0">
     <!-- Google Fonts: Inter & Outfit for modern look -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -128,6 +128,24 @@
                             <button id="btn-p2p-connect" class="btn-secondary" style="padding: 8px 12px; margin-top: 0; font-size: 0.85rem; white-space: nowrap; height: 35px; display: flex; align-items: center; justify-content: center;">連線</button>
                         </div>
                     </div>
+
+                    <!-- P2P Chat Area (v1.9.0) -->
+                    <div class="p2p-chat-area" id="p2p-chat-area" style="display: none;">
+                        <label class="p2p-chat-label">線上對局聊天室</label>
+                        <div class="chat-messages" id="chat-messages"></div>
+                        <div class="emoji-row">
+                            <button class="emoji-btn" data-emoji="😂">😂</button>
+                            <button class="emoji-btn" data-emoji="😲">😲</button>
+                            <button class="emoji-btn" data-emoji="😢">😢</button>
+                            <button class="emoji-btn" data-emoji="⚡">⚡</button>
+                            <button class="quick-msg-btn" data-msg="👍 好棋！">👍 好棋</button>
+                            <button class="quick-msg-btn" data-msg="🤝 承讓了！">🤝 承讓</button>
+                        </div>
+                        <div class="chat-input-row">
+                            <input type="text" id="chat-input" placeholder="輸入訊息...">
+                            <button id="btn-send-chat" class="btn-secondary">發送</button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Statistics Card -->
@@ -181,24 +199,25 @@
             <h2 class="modal-title">關於遊戲</h2>
             <div class="modal-scroll-area">
                 <p style="margin-bottom: 12px; font-weight: 600; text-align: center; font-size: 1rem; color: var(--text-primary);">🌌 Cyber Gomoku - 極致美學五子棋</p>
-                <p style="margin-bottom: 6px;"><strong>目前版本：</strong>v1.7.0</p>
+                <p style="margin-bottom: 6px;"><strong>目前版本：</strong>v1.9.0</p>
                 <p style="margin-bottom: 6px;"><strong>發布日期：</strong>2026-06-20</p>
                 <p style="margin-bottom: 12px;"><strong>開發團隊：</strong>Antigravity AI Co-Pilot & Yuki</p>
                 <hr>
-                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">🛠️ 本版本摘要 (v1.7.0)：</p>
+                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">🛠️ 本版本摘要 (v1.9.0)：</p>
                 <ul>
-                    <li>🌗 **威脅提示黑白棋區分**：威脅提示圈依黑子（青藍/金黃）與白子（粉紅/銀白）呈現對應配色，清楚辨識威脅所屬。</li>
-                    <li>🚨 **致命/預警雙重分級**：區分「活三延伸（溫和虛線閃爍）」與「再不落子即五連（加粗實線、高頻紅光發光、雷達漣漪擴散）」，對致命威脅進行強烈視覺警示。</li>
-                    <li>⚔️ **雙重威脅兵家必爭**：當空格同時為雙方威脅交織點時，呈現雙色交替閃爍特效，彰顯核心戰略要地。</li>
+                    <li>🔄 **自動重連與對局恢復**：當連線中斷時儲存棋局快照，背景 30 秒自動重新連入與無縫對局恢復。</li>
+                    <li>💓 **心跳包 Keep-Alive**：背景每 15 秒發送 ping/pong，防止局域網與 NAT 閒置超時斷線。</li>
+                    <li>💬 **線上聊天室與動態表情**：支援快捷訊息、表情符號，並配備棋盤中央 3D 浮空表情特效。</li>
                 </ul>
                 <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-secondary);">📜 歷史版本摘要：</p>
                 <details style="margin-bottom: 12px; font-size: 0.85rem; color: var(--text-secondary);">
-                    <summary style="cursor: pointer; padding: 4px 0; color: var(--accent-primary); outline: none;">查看歷史更新歷史 (v1.6.0 及更早)</summary>
+                    <summary style="cursor: pointer; padding: 4px 0; color: var(--accent-primary); outline: none;">查看歷史更新歷史 (v1.8.1 及更早)</summary>
                     <ul style="padding-left: 16px; margin-top: 8px;">
+                        <li>📦 **v1.8.1**：實作 ES Modules 模組化重構，解耦棋局大腦與 UI，提升程式維護性。</li>
+                        <li>🌗 **v1.7.0**：支援威脅提示黑白棋子區分、致命/預警雙重分級、雙重威脅交替閃爍。</li>
                         <li>✨ **v1.6.0**：實作 3D 落子棋盤微震、悔棋反向飛起收回與滑鼠隨動反射光影。</li>
                         <li>🎯 **v1.5.0**：修復 3D 視角天元無法落子 Bug 與線上 P2P 斷線、Websocket 安全連線。</li>
                         <li>🌐 **v1.4.0**：支援 WebRTC 線上連線對戰 (P2P)、3D 傾斜視角及關於面板。</li>
-                        <li>⚖️ **v1.3.0**：支援 Renju 禁手規則、Web Workers 背景運算與 Zobrist 雜湊優化。</li>
                     </ul>
                 </details>
                 <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">📜 遊戲玩法簡介：</p>
@@ -225,7 +244,7 @@
 
     <!-- Load scripts at the end -->
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-    <script src="ai.js?v=1.7.0"></script>
-    <script src="app.js?v=1.7.0"></script>
+    <script src="ai.js?v=1.9.0"></script>
+    <script type="module" src="app.js?v=1.9.0"></script>
 </body>
 </html>
