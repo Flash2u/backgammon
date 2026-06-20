@@ -1786,4 +1786,224 @@ body.theme-slate .board-wrapper.view-3d {
     50% { opacity: 1; transform: scale(1.1); }
 }
 
+/* ==========================================================================
+   ENHANCEMENTS & BUG FIXES (v2.0.0)
+   ========================================================================== */
+
+/* 1. 常態禁手點視覺標記 */
+.forbidden-marker {
+    position: absolute;
+    width: 40%;
+    height: 40%;
+    top: 30%;
+    left: 30%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+    color: rgba(239, 68, 68, 0.45);
+    text-shadow: 0 0 4px rgba(239, 68, 68, 0.5);
+    pointer-events: none;
+    z-index: 3;
+    animation: fadeInMarker 0.25s ease-out forwards;
+}
+
+@keyframes fadeInMarker {
+    0% { opacity: 0; transform: scale(0.6); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+body.theme-neon .forbidden-marker {
+    color: rgba(239, 68, 68, 0.75);
+    text-shadow: 0 0 6px rgba(239, 68, 68, 0.95);
+}
+
+body.theme-slate .forbidden-marker {
+    color: rgba(239, 68, 68, 0.4);
+    text-shadow: none;
+}
+
+/* 2. 2D 悔棋棋子平滑縮小淡出 */
+@keyframes removeStone2D {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(0.1);
+        opacity: 0;
+    }
+}
+
+.stone.stone-undoing {
+    animation: removeStone2D 0.35s cubic-bezier(0.25, 1, 0.5, 1) forwards !important;
+    pointer-events: none;
+}
+
+/* 3. 3D 棋盤隨動傾角 (結合 --light-x / --light-y) */
+.board-wrapper.view-3d {
+    transform: rotateX(calc(32deg - var(--light-y, 0) * 3deg)) rotateY(calc(var(--light-x, 0) * 3deg)) rotateZ(-12deg) translateY(-10px) !important;
+    transition: transform 0.1s ease-out; /* 微幅平滑 */
+}
+
+/* 4. 線上大廳房間列表 */
+.lobby-rooms-list::-webkit-scrollbar {
+    width: 6px;
+}
+.lobby-rooms-list::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+}
+.lobby-rooms-list::-webkit-scrollbar-thumb {
+    background: var(--card-border);
+    border-radius: 3px;
+}
+.lobby-rooms-list::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-primary);
+}
+
+.lobby-room-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: background 0.2s;
+}
+.lobby-room-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+.lobby-room-name {
+    font-weight: 500;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 140px;
+}
+.lobby-room-btn {
+    background: var(--accent-primary);
+    border: none;
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.2s;
+}
+.lobby-room-btn:hover {
+    opacity: 0.9;
+    transform: scale(1.05);
+}
+
+/* 5. AI 思考終端監控面板霓虹滾動條 */
+.terminal-body::-webkit-scrollbar {
+    width: 4px;
+}
+.terminal-body::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+}
+.terminal-body::-webkit-scrollbar-thumb {
+    background: rgba(16, 185, 129, 0.3);
+    border-radius: 2px;
+}
+.terminal-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(16, 185, 129, 0.6);
+}
+
+.pulse-dot {
+    animation: monitorPulse 1.2s infinite ease-in-out;
+}
+@keyframes monitorPulse {
+    0% { opacity: 0.4; box-shadow: 0 0 4px #ef4444; }
+    50% { opacity: 1; box-shadow: 0 0 10px #ef4444; }
+    100% { opacity: 0.4; box-shadow: 0 0 4px #ef4444; }
+}
+
+/* 6. 讀秒警告與手機響應式排版優化 (v2.0.0) */
+.timer-warning {
+    color: #ef4444 !important;
+    text-shadow: 0 0 8px #ef4444, 0 0 15px #ef4444 !important;
+    animation: timerBlink 0.5s infinite alternate;
+}
+@keyframes timerBlink {
+    0% { opacity: 0.4; }
+    100% { opacity: 1; }
+}
+
+/* P2P 大廳與手動連線常態垂直排列，防止 350px 側邊欄溢出 */
+.lobby-create-row, .lobby-join-row {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+#p2p-room-name-input, #p2p-peer-id-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid var(--card-border);
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+#p2p-room-name-input:focus, #p2p-peer-id-input:focus {
+    border-color: var(--accent-primary);
+}
+
+#btn-p2p-create-room, #btn-p2p-connect {
+    width: 100%;
+    height: 35px;
+    margin-top: 0;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px;
+}
+
+.lobby-rooms-list {
+    max-height: 120px;
+    overflow-y: auto;
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.15);
+    padding: 4px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 8px;
+}
+
+@media (max-width: 600px) {
+    .app-container {
+        padding: 12px !important;
+        gap: 12px !important;
+    }
+    
+    .app-title {
+        font-size: 1.8rem !important;
+        letter-spacing: 2px !important;
+    }
+    
+    .board-wrapper {
+        padding: 8px !important;
+        border-radius: 12px !important;
+        border-width: 3px !important;
+    }
+    
+    /* 3D 傾角在窄螢幕上略微減小，防止邊角溢出 */
+    .board-wrapper.view-3d {
+        transform: rotateX(24deg) rotateY(calc(var(--light-x, 0) * 2deg)) rotateZ(-8deg) translateY(-5px) !important;
+    }
+}
+
+
+
 

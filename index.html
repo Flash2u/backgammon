@@ -92,6 +92,16 @@
                             <button data-rules="renju">禁手規則</button>
                         </div>
                     </div>
+
+                    <div class="form-group">
+                        <label>限時規則</label>
+                        <div class="segmented-control" id="time-select">
+                            <button class="active" data-time="none">無限制</button>
+                            <button data-time="15s">15 秒</button>
+                            <button data-time="30s">30 秒</button>
+                            <button data-time="60s">60 秒</button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Operations Card -->
@@ -159,13 +169,37 @@
                         🔗 複製邀請連結
                     </button>
                     
-                    <div class="p2p-join-group" style="border-top: 1px solid var(--card-border); padding-top: 12px; margin-top: 8px;">
-                        <label style="font-size: 0.8rem; margin-bottom: 6px; display: block; color: var(--text-secondary);">手動加入對戰</label>
-                        <div style="display: flex; gap: 8px; align-items: center;">
-                            <input type="text" id="p2p-peer-id-input" placeholder="輸入好友的連線 ID" style="flex: 1; padding: 8px; border-radius: 6px; border: 1px solid var(--card-border); background: rgba(255, 255, 255, 0.05); color: #fff; font-size: 0.85rem; outline: none; transition: border-color 0.2s;">
-                            <button id="btn-p2p-connect" class="btn-secondary" style="padding: 8px 12px; margin-top: 0; font-size: 0.85rem; white-space: nowrap; height: 35px; display: flex; align-items: center; justify-content: center;">連線</button>
+                    <button id="btn-p2p-spectate" class="btn-secondary" style="width: 100%; margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                        <span class="btn-icon">👁️</span> 複製觀戰連結
+                    </button>
+                    
+                    <div class="p2p-voice-group" id="p2p-voice-group" style="display: none; border-top: 1px solid var(--card-border); padding-top: 12px; margin-top: 8px;">
+                        <button id="btn-p2p-voice" class="btn-secondary" style="width: 100%; margin-top: 0; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            <span class="btn-icon">🎙️</span> 開啟語音對話
+                        </button>
+                        <audio id="p2p-remote-audio" autoplay style="display: none;"></audio>
+                    </div>
+
+                    <!-- P2P Lobby Matchmaking (v2.0.0) -->
+                    <div class="p2p-lobby-group" id="p2p-lobby-group" style="border-top: 1px solid var(--card-border); padding-top: 12px; margin-top: 8px;">
+                        <label style="font-size: 0.8rem; margin-bottom: 6px; display: block; color: var(--text-secondary);">公開對戰大廳</label>
+                        <div class="lobby-create-row">
+                            <input type="text" id="p2p-room-name-input" placeholder="自訂您的房間名稱">
+                            <button id="btn-p2p-create-room" class="btn-primary">創建房間</button>
+                        </div>
+                        <div class="lobby-rooms-list" id="lobby-rooms-list">
+                            <div style="text-align: center; padding: 12px; color: var(--text-muted);">大廳房間載入中...</div>
                         </div>
                     </div>
+                    
+                    <div class="p2p-join-group" style="border-top: 1px solid var(--card-border); padding-top: 12px; margin-top: 8px;">
+                        <label style="font-size: 0.8rem; margin-bottom: 6px; display: block; color: var(--text-secondary);">手動加入對戰</label>
+                        <div class="lobby-join-row">
+                            <input type="text" id="p2p-peer-id-input" placeholder="輸入好友的連線 ID">
+                            <button id="btn-p2p-connect" class="btn-secondary">連線</button>
+                        </div>
+                    </div>
+
 
                     <!-- P2P Chat Area (v1.9.0) -->
                     <div class="p2p-chat-area" id="p2p-chat-area" style="display: none;">
@@ -183,6 +217,21 @@
                             <input type="text" id="chat-input" placeholder="輸入訊息...">
                             <button id="btn-send-chat" class="btn-secondary">發送</button>
                         </div>
+                    </div>
+                </div>
+
+                <!-- AI Thought Monitor Card (v2.0.0) -->
+                <div class="glass-card ai-monitor-card" id="ai-monitor-card" style="display: none; margin-top: 12px;">
+                    <h2 class="card-title" style="color: var(--accent-secondary); display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <span>🧠 AI 思考終端</span>
+                        <span class="pulse-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 8px #ef4444; display: none;" id="ai-monitor-pulse"></span>
+                    </h2>
+                    <div class="terminal-body" style="font-family: monospace; font-size: 0.75rem; line-height: 1.5; color: #10b981; background: rgba(0, 0, 0, 0.5); padding: 10px; border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.2); max-height: 130px; overflow-y: auto;">
+                        <div id="ai-monitor-depth">迭代深度: -</div>
+                        <div id="ai-monitor-nodes">計算節點: -</div>
+                        <div id="ai-monitor-nps">每秒算力: -</div>
+                        <div id="ai-monitor-score">局勢估分: -</div>
+                        <div id="ai-monitor-pv" style="white-space: nowrap; text-overflow: ellipsis; overflow: hidden; color: #3b82f6;">預測路徑: -</div>
                     </div>
                 </div>
 

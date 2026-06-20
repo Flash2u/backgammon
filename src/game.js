@@ -1,4 +1,4 @@
-﻿export const BOARD_SIZE = 15;
+export const BOARD_SIZE = 15;
 
 // 單例狀態
 export const state = {
@@ -21,6 +21,8 @@ export const state = {
     hintEnabled: true,     // 預設開啟威脅提示
     viewMode: '2d',        // 預設 2D 視角
     p2pReconnecting: false,// P2P 是否正在重連
+    timeLimitRule: 'none', // 'none' | '15s' | '30s' | '60s'
+    roundSecondsLeft: 0,
     stats: {
         playerWins: 0,
         aiWins: 0,
@@ -42,7 +44,15 @@ export const game = {
         state.isReplayMode = false;
         state.replayIndex = 0;
         state.lastMove = null;
+        state.roundSecondsLeft = this.getTimeLimitSeconds();
         this.terminateAI();
+    },
+
+    getTimeLimitSeconds() {
+        if (state.timeLimitRule === '15s') return 15;
+        if (state.timeLimitRule === '30s') return 30;
+        if (state.timeLimitRule === '60s') return 60;
+        return 0;
     },
 
     reset() {
@@ -302,7 +312,7 @@ export const game = {
     },
 
     // AI 落子計算
-    triggerAIMove(onStartThinking, onBestMove) {
+    triggerAIMove(onStartThinking, onBestMove, onProgress) {
         this.terminateAI();
         onStartThinking();
 
@@ -310,7 +320,11 @@ export const game = {
             aiWorker = new Worker('ai_worker.js?v=1.9.5');
             aiWorker.onmessage = (e) => {
                 if (state.isGameOver) return;
-                const { bestMove, error } = e.data;
+                const { type, bestMove, progress, error } = e.data;
+                if (type === 'progress' && onProgress) {
+                    onProgress(progress);
+                    return;
+                }
                 if (error) console.error("AI Worker Error:", error);
                 this.terminateAI();
                 onBestMove(bestMove);
@@ -417,6 +431,19 @@ export const game = {
         
         sgf += ")";
         return sgf;
+    },
+
+    getBoardHash() {
+        let hash = 0;
+        for (let r = 0; r < BOARD_SIZE; r++) {
+            for (let c = 0; c < BOARD_SIZE; c++) {
+                const val = state.board[r][c];
+                if (val !== 0) {
+                    hash = (hash * 31 + (r * 15 + c) * val) | 0;
+                }
+            }
+        }
+        return hash;
     }
 };
 

@@ -1,4 +1,4 @@
-import { state } from './game.js';
+﻿import { state } from './game.js';
 
 let peer = null;
 let p2pConn = null;
@@ -8,6 +8,7 @@ let pingInterval = null;
 let lastHeartbeatReceived = 0;
 let reconnectInterval = null;
 let reconnectCountdownTimer = null;
+let spectatorConns = [];
 
 let callbacks = {
     onStatusChange: (status, color) => {},
@@ -15,8 +16,11 @@ let callbacks = {
     onConnected: (id) => {},
     onPeerConnected: (oppId, myColor) => {},
     onData: (data) => {},
-    onClose: () => {}
+    onClose: () => {},
+    onVoiceCall: (call) => {}
 };
+
+const LOBBY_URL = 'https://kvdb.io/8xN9L2b8zF69P1k5Lobby/rooms';
 
 export const p2p = {
     init(cbs) {
@@ -61,6 +65,13 @@ export const p2p = {
 
         // 接收連接
         peer.on('connection', (conn) => {
+            if (conn.metadata && conn.metadata.isSpectator) {
+                // 旁觀者連線
+                spectatorConns.push(conn);
+                this.setupSpectatorConnection(conn);
+                return;
+            }
+
             if (p2pConn && p2pConn.open) {
                 conn.close();
                 return;
@@ -69,6 +80,13 @@ export const p2p = {
             p2pConn = conn;
             p2pMyColor = 1; // 房主先手黑棋
             this.setupConnection(conn);
+        });
+
+        // 接收語音連接
+        peer.on('call', (call) => {
+            if (callbacks.onVoiceCall) {
+                callbacks.onVoiceCall(call);
+            }
         });
 
         peer.on('error', (err) => {
@@ -94,6 +112,14 @@ export const p2p = {
         const conn = peer.connect(targetId);
         p2pConn = conn;
         this.setupConnection(conn);
+    },
+
+    connectSpectator(targetId) {
+        if (!peer || peer.destroyed) return;
+        p2pMyColor = 0; // 旁觀者無棋色
+        
+        const conn = peer.connect(targetId, { metadata: { isSpectator: true } });
+        this.setupSpectatorConnection(conn);
     },
 
     setupConnection(conn) {
@@ -287,6 +313,18 @@ export const p2p = {
         if (p2pConn) {
             p2pConn.close();
         }
+        
+        // 關閉所有觀戰者連線
+        if (spectatorConns && spectatorConns.length > 0) {
+            spectatorConns.forEach(conn => {
+                try { conn.close(); } catch(e) {}
+            });
+            spectatorConns = [];
+        }
+        
+        this.stopVoice();
+        this.unregisterRoom();
+
         if (peer) {
             peer.destroy();
             peer = null;
@@ -302,5 +340,182 @@ export const p2p = {
 
     isConnected() {
         return p2pConn && p2pConn.open;
+    },
+
+    getOpponentId() {
+        return oppId;
+    },
+
+    getMyPeerId() {
+        return peer ? peer.id : null;
+    },
+
+    // 廣播給對手與所有旁觀者 (v2.0.0)
+    broadcast(msg) {
+        this.sendMessage(msg);
+        if (spectatorConns && spectatorConns.length > 0) {
+            spectatorConns.forEach(conn => {
+                if (conn && conn.open) {
+                    conn.send(msg);
+                }
+            });
+        }
+    },
+
+    // 設置旁觀者連線 (v2.0.0)
+    setupSpectatorConnection(conn) {
+        conn.on('open', () => {
+            console.log("Spectator connection established:", conn.peer);
+            callbacks.onToast("👁️ 新的旁觀者加入觀戰");
+            if (callbacks.onSpectatorConnected) {
+                callbacks.onSpectatorConnected(conn);
+            }
+        });
+
+        conn.on('data', (data) => {
+            // 旁觀者發言
+            callbacks.onData({
+                ...data,
+                fromSpectator: true,
+                senderId: conn.peer
+            });
+        });
+
+        conn.on('close', () => {
+            console.log("Spectator connection closed:", conn.peer);
+            spectatorConns = spectatorConns.filter(c => c.peer !== conn.peer);
+        });
+
+        conn.on('error', (err) => {
+            console.error("Spectator connection error:", err);
+            conn.close();
+        });
+    },
+
+    // ==========================================================================
+    // KVDB 公共大廳房間控制 (v2.0.0)
+    // ==========================================================================
+    async registerRoom(roomName, rulesMode) {
+        if (!peer || !peer.id) return;
+        try {
+            const roomData = {
+                id: peer.id,
+                name: roomName || `房間_${peer.id.slice(0, 4)}`,
+                rulesMode: rulesMode || 'standard',
+                timestamp: Date.now()
+            };
+            await fetch(`${LOBBY_URL}/${peer.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(roomData)
+            });
+            console.log("Room registered in lobby:", roomData);
+        } catch (e) {
+            console.error("Failed to register room in lobby:", e);
+        }
+    },
+
+    async unregisterRoom() {
+        if (!peer || !peer.id) return;
+        try {
+            await fetch(`${LOBBY_URL}/${peer.id}`, {
+                method: 'DELETE'
+            });
+            console.log("Room unregistered from lobby");
+        } catch (e) {
+            console.error("Failed to unregister room:", e);
+        }
+    },
+
+    async fetchRooms(callback) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 秒超時
+        
+        try {
+            const res = await fetch(`${LOBBY_URL}/?values=true`, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+            const data = await res.json();
+            const rooms = data.map(item => JSON.parse(item[1]));
+            callback(rooms, null);
+        } catch (e) {
+            clearTimeout(timeoutId);
+            console.warn("Failed to fetch rooms from lobby:", e);
+            callback(null, e);
+        }
+    },
+
+    // ==========================================================================
+    // WebRTC 語音通話 (v2.0.0)
+    // ==========================================================================
+    voiceCall: null,
+    localStream: null,
+
+    async startVoice(oppPeerId, localStream, remoteAudioEl, onStreamCallback) {
+        if (!peer || peer.destroyed) return;
+        this.localStream = localStream;
+        
+        try {
+            const call = peer.call(oppPeerId, localStream);
+            this.voiceCall = call;
+            
+            call.on('stream', (remoteStream) => {
+                if (remoteAudioEl) {
+                    remoteAudioEl.srcObject = remoteStream;
+                }
+                if (onStreamCallback) onStreamCallback(remoteStream);
+            });
+
+            call.on('close', () => {
+                this.stopVoice();
+            });
+            
+            call.on('error', (err) => {
+                console.error("Voice call error:", err);
+                this.stopVoice();
+            });
+        } catch (err) {
+            console.error("Failed to start voice call:", err);
+            this.stopVoice();
+        }
+    },
+
+    answerVoice(call, localStream, remoteAudioEl, onStreamCallback) {
+        this.voiceCall = call;
+        this.localStream = localStream;
+        
+        try {
+            call.answer(localStream);
+            
+            call.on('stream', (remoteStream) => {
+                if (remoteAudioEl) {
+                    remoteAudioEl.srcObject = remoteStream;
+                }
+                if (onStreamCallback) onStreamCallback(remoteStream);
+            });
+
+            call.on('close', () => {
+                this.stopVoice();
+            });
+            
+            call.on('error', (err) => {
+                console.error("Voice call error:", err);
+                this.stopVoice();
+            });
+        } catch (err) {
+            console.error("Failed to answer voice call:", err);
+            this.stopVoice();
+        }
+    },
+
+    stopVoice() {
+        if (this.voiceCall) {
+            this.voiceCall.close();
+            this.voiceCall = null;
+        }
+        if (this.localStream) {
+            this.localStream.getTracks().forEach(track => track.stop());
+            this.localStream = null;
+        }
     }
 };

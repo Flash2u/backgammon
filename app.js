@@ -20,11 +20,37 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================================================
     // 計時器控制
     // ==========================================================================
+    // ==========================================================================
+    // 計時器控制
+    // ==========================================================================
     function startTimer() {
         stopTimer();
+        
+        // 每次落子或悔棋時，如果有限時規則，則重置狀態剩餘秒數
+        if (state.timeLimitRule !== 'none') {
+            state.roundSecondsLeft = game.getTimeLimitSeconds();
+            ui.updateTimerUI(state.roundSecondsLeft, true);
+        } else {
+            ui.updateTimerUI(gameSeconds, false);
+        }
+
         timerInterval = setInterval(() => {
             gameSeconds++;
-            ui.updateTimerUI(gameSeconds);
+            if (state.timeLimitRule !== 'none') {
+                state.roundSecondsLeft--;
+                ui.updateTimerUI(state.roundSecondsLeft, true);
+
+                // 剩餘 10 秒內播放警示嗶聲
+                if (state.roundSecondsLeft <= 10 && state.roundSecondsLeft > 0) {
+                    audio.playCountdownBeep(state.roundSecondsLeft);
+                }
+
+                if (state.roundSecondsLeft <= 0) {
+                    handleTimeout();
+                }
+            } else {
+                ui.updateTimerUI(gameSeconds, false);
+            }
         }, 1000);
     }
 
@@ -40,7 +66,42 @@ document.addEventListener('DOMContentLoaded', () => {
     function resetTimer() {
         stopTimer();
         gameSeconds = 0;
-        ui.updateTimerUI(0);
+        ui.updateTimerUI(0, false);
+    }
+
+    // 處理超時輸局
+    function handleTimeout() {
+        stopTimer();
+        state.isGameOver = true;
+        
+        const loserColor = state.currentTurn;
+        const winnerColor = 3 - loserColor;
+        
+        game.updateStats(winnerColor);
+
+        // 如果是 P2P 模式，且是我超時，需要通知對手
+        if (state.gameMode === 'p2p' && p2p.isConnected()) {
+            if (loserColor === p2p.getMyColor()) {
+                p2p.broadcast({
+                    type: 'timeout',
+                    loser: loserColor
+                });
+            }
+        }
+
+        ui.updateStatsUI(state.stats);
+        setTimeout(() => {
+            if (state.gameMode === 'ai') {
+                if (winnerColor === state.playerColor) {
+                    audio.playWin();
+                } else {
+                    audio.playLose();
+                }
+            } else {
+                audio.playWin();
+            }
+            ui.showGameEndModal(winnerColor, [], true); // 加上 isTimeout = true 標記
+        }, 300);
     }
 
     // ==========================================================================
@@ -100,13 +161,14 @@ document.addEventListener('DOMContentLoaded', () => {
         ui.updateThreatHints(game.getThreatHints(state.hintEnabled));
         ui.updateForbiddenMoves(game.getForbiddenMoves());
         ui.updateStatsUI(state.stats);
+        ui.clearVirtualAIStones();
     }
 
     // ==========================================================================
     // 落子核心控制工作流
     // ==========================================================================
     function handleCellClick(r, c) {
-        if (state.isGameOver || state.isAiThinking || isUndoing) return;
+        if (state.isGameOver || state.isAiThinking || isUndoing || state.isSpectator) return;
         if (state.board[r][c] !== 0) return;
 
         // P2P 模式限制
@@ -137,6 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 播放落子音效與繪製棋子
         audio.playStone();
         ui.renderStone(r, c, activeColor);
+        ui.clearVirtualAIStones(); // 清除 AI 預覽虛擬子
 
         // 如果是第一手，隱藏開局提示
         if (state.history.length === 0) {
@@ -146,12 +209,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // 更新遊戲核心狀態
         const result = game.makeMove(r, c, activeColor);
 
-        // 如果是 P2P 連線對戰，將落子同步傳給對手
+        // 如果是 P2P 連線對戰，將落子同步廣播給對手與觀戰者，並附帶盤面唯一的 Zobrist 哈希值
         if (state.gameMode === 'p2p' && p2p.isConnected()) {
-            p2p.sendMessage({
+            p2p.broadcast({
                 type: 'move',
                 r: r,
-                c: c
+                c: c,
+                hash: game.getBoardHash()
             });
         }
 
@@ -166,7 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (result.winner === state.playerColor) {
                         audio.playWin();
                     } else {
-                        audio.playLose(); // 播放失敗音效，增加對抗性
+                        audio.playLose();
                     }
                 } else {
                     audio.playWin();
@@ -189,6 +253,9 @@ document.addEventListener('DOMContentLoaded', () => {
         ui.updateTurnUI();
         ui.updateThreatHints(game.getThreatHints(state.hintEnabled));
         ui.updateForbiddenMoves(game.getForbiddenMoves());
+
+        // 重啟計時器
+        startTimer();
 
         // 如果是 AI 模式且輪到 AI
         if (state.gameMode === 'ai' && state.currentTurn !== state.playerColor) {
@@ -214,6 +281,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     ui.updateTurnUI();
                 }
+            },
+            (progress) => {
+                ui.updateAIMonitor(progress);
             }
         );
     }
@@ -231,7 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             ui.showP2PToast('已向對手發送悔棋請求，等待回應...');
-            p2p.sendMessage({ type: 'undo-request' });
+            p2p.broadcast({ type: 'undo-request' });
             return;
         }
 
@@ -275,12 +345,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================================================
-    // P2P 連線數據包接收器
+    // P2P 連線數據包接收器 (v2.0.0)
     // ==========================================================================
     function handleP2PData(data) {
         switch (data.type) {
             case 'init':
-                // 同步房主的對局與规则
+                // 同步房主的對局與規則
                 state.rulesMode = data.rulesMode;
                 ui.updateSettingButtons('rulesMode', state.rulesMode);
                 state.board = data.board;
@@ -295,9 +365,71 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
 
             case 'move':
-                if (state.currentTurn !== p2p.getMyColor()) {
+                if (state.currentTurn !== p2p.getMyColor() && !state.isSpectator) {
+                    const opponentColor = 3 - p2p.getMyColor();
+                    // 1. 強制防作弊校驗
+                    if (data.r < 0 || data.r >= 15 || data.c < 0 || data.c >= 15) {
+                        ui.showP2PToast('⚠️ 偵測到非法越界落子，已中斷連線！', true);
+                        p2p.close();
+                        return;
+                    }
+                    if (state.board[data.r][data.c] !== 0) {
+                        ui.showP2PToast('⚠️ 偵測到覆蓋棋子作弊，已中斷連線！', true);
+                        p2p.close();
+                        return;
+                    }
+                    if (state.rulesMode === 'renju' && opponentColor === 1) {
+                        if (game.checkForbidden(data.r, data.c)) {
+                            ui.showP2PToast('⚠️ 偵測到違反黑棋禁手落子，已中斷連線！', true);
+                            p2p.close();
+                            return;
+                        }
+                    }
+
                     executeMove(data.r, data.c);
+
+                    // 2. 哈希一致性校驗與自愈
+                    const localHash = game.getBoardHash();
+                    if (data.hash !== undefined && localHash !== data.hash) {
+                        console.warn(`Hash mismatch! Local: ${localHash}, Remote: ${data.hash}. Requesting self-healing...`);
+                        p2p.broadcast({ type: 'sync-request' });
+                    }
+                } else if (state.isSpectator) {
+                    // 旁觀者唯讀同步落子
+                    audio.playStone();
+                    ui.renderStone(data.r, data.c, state.currentTurn);
+                    game.makeMove(data.r, data.c, state.currentTurn);
+                    ui.updateTurnUI();
+                    ui.updateThreatHints(game.getThreatHints(state.hintEnabled));
+                    ui.updateForbiddenMoves(game.getForbiddenMoves());
+                    startTimer();
                 }
+                break;
+
+            case 'sync-request':
+                // 收到自愈同步請求，將完整盤面與歷史發送給對手或旁觀者
+                p2p.broadcast({
+                    type: 'sync-response',
+                    board: state.board,
+                    currentTurn: state.currentTurn,
+                    history: state.history,
+                    lastMove: state.lastMove,
+                    rulesMode: state.rulesMode
+                });
+                break;
+
+            case 'sync-response':
+                // 執行狀態自愈覆蓋與重繪
+                state.board = data.board;
+                state.currentTurn = data.currentTurn;
+                state.history = data.history;
+                state.lastMove = data.lastMove;
+                state.rulesMode = data.rulesMode;
+                
+                ui.updateSettingButtons('rulesMode', state.rulesMode);
+                syncGameUI();
+                startTimer();
+                ui.showP2PToast('⚡ 盤面數據已自動校驗重組！');
                 break;
 
             case 'undo-request':
@@ -305,13 +437,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     '悔棋請求',
                     '對手請求悔棋，請問是否同意？',
                     () => {
-                        p2p.sendMessage({ type: 'undo-response', accept: true });
+                        p2p.broadcast({ type: 'undo-response', accept: true });
                         const steps = state.history.length >= 2 ? 2 : 1;
                         performUndo(steps);
                         ui.showP2PToast('您同意了對手的悔棋請求');
                     },
                     () => {
-                        p2p.sendMessage({ type: 'undo-response', accept: false });
+                        p2p.broadcast({ type: 'undo-response', accept: false });
                         ui.showP2PToast('您拒絕了對手的悔棋請求');
                     }
                 );
@@ -332,12 +464,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     '重玩請求',
                     '對手請求重新開始對局，請問是否同意？',
                     () => {
-                        p2p.sendMessage({ type: 'restart-response', accept: true });
+                        p2p.broadcast({ type: 'restart-response', accept: true });
                         resetGame();
                         ui.showP2PToast('重新對局開始！');
                     },
                     () => {
-                        p2p.sendMessage({ type: 'restart-response', accept: false });
+                        p2p.broadcast({ type: 'restart-response', accept: false });
                         ui.showP2PToast('您拒絕了重新對局的請求');
                     }
                 );
@@ -360,7 +492,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
 
             case 'reconnect-request':
-                p2p.sendMessage({
+                p2p.broadcast({
                     type: 'reconnect-sync',
                     board: state.board,
                     currentTurn: state.currentTurn,
@@ -389,14 +521,112 @@ document.addEventListener('DOMContentLoaded', () => {
                 ui.showP2PToast('⚡ 連線已恢復，對局無縫繼續！');
                 break;
 
+            case 'timeout':
+                stopTimer();
+                state.isGameOver = true;
+                const winnerColor = 3 - data.loser;
+                game.updateStats(winnerColor);
+                ui.updateStatsUI(state.stats);
+                setTimeout(() => {
+                    audio.playWin();
+                    ui.showGameEndModal(winnerColor, [], true);
+                }, 300);
+                break;
+
             case 'chat':
-                ui.appendChatMessage('對手', data.text, 'opponent');
+                if (data.fromSpectator) {
+                    ui.appendChatMessage(`旁觀者_${data.senderId.slice(0, 4)}`, data.text, 'opponent');
+                    // 房主轉發消息給對手與所有旁觀者
+                    if (p2p.getMyColor() === 1) {
+                        p2p.broadcast({
+                            type: 'chat',
+                            text: data.text,
+                            fromSpectator: true,
+                            senderId: data.senderId
+                        });
+                    }
+                } else {
+                    ui.appendChatMessage('對手', data.text, 'opponent');
+                }
                 break;
 
             case 'emoji':
-                ui.appendChatMessage('對手', data.emoji, 'opponent');
-                ui.showFloatingEmoji(data.emoji);
+                if (data.fromSpectator) {
+                    ui.appendChatMessage(`旁觀者_${data.senderId.slice(0, 4)}`, data.emoji, 'opponent');
+                    ui.showFloatingEmoji(data.emoji);
+                    if (p2p.getMyColor() === 1) {
+                        p2p.broadcast({
+                            type: 'emoji',
+                            emoji: data.emoji,
+                            fromSpectator: true,
+                            senderId: data.senderId
+                        });
+                    }
+                } else {
+                    ui.appendChatMessage('對手', data.emoji, 'opponent');
+                    ui.showFloatingEmoji(data.emoji);
+                }
                 break;
+        }
+    }
+
+    // ==========================================================================
+    // 大廳輪詢機制 (v2.0.0)
+    // ==========================================================================
+    let lobbyPollInterval = null;
+    function startLobbyPolling() {
+        stopLobbyPolling();
+        const poll = () => {
+            if (state.gameMode === 'p2p' && !p2p.isConnected()) {
+                p2p.fetchRooms((rooms, error) => {
+                    ui.renderLobbyRooms(rooms, error);
+                });
+            }
+        };
+        poll();
+        lobbyPollInterval = setInterval(poll, 5000); // 每 5 秒輪詢一次
+    }
+
+    function stopLobbyPolling() {
+        if (lobbyPollInterval) {
+            clearInterval(lobbyPollInterval);
+            lobbyPollInterval = null;
+        }
+    }
+
+    // ==========================================================================
+    // WebRTC 語音通話控制 (v2.0.0)
+    // ==========================================================================
+    let localVoiceStream = null;
+    async function toggleVoice() {
+        if (p2p.voiceCall) {
+            // 關閉語音
+            p2p.stopVoice();
+            if (localVoiceStream) {
+                localVoiceStream.getTracks().forEach(t => t.stop());
+                localVoiceStream = null;
+            }
+            ui.setVoiceUIActive(false);
+            ui.showP2PToast('🎙️ 語音通話已關閉');
+        } else {
+            // 開啟語音
+            try {
+                ui.setVoiceUIActive(false, true);
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                localVoiceStream = stream;
+                
+                const oppId = p2p.getOpponentId();
+                const remoteAudio = document.getElementById('p2p-remote-audio');
+                
+                p2p.startVoice(oppId, stream, remoteAudio, () => {
+                    ui.setVoiceUIActive(true);
+                    ui.showP2PToast('🎙️ 語音通話已連線');
+                });
+            } catch (err) {
+                console.error("Failed to open microphone:", err);
+                ui.setVoiceUIActive(false);
+                ui.showP2PToast('⚠️ 無法取得麥克風，請檢查權限', true);
+            }
         }
     }
 
@@ -412,7 +642,7 @@ document.addEventListener('DOMContentLoaded', () => {
             onRestartClick: () => {
                 if (state.gameMode === 'p2p' && p2p.isConnected()) {
                     ui.showP2PToast('已向對手發送重新對局請求...');
-                    p2p.sendMessage({ type: 'restart-request' });
+                    p2p.broadcast({ type: 'restart-request' });
                     return;
                 }
                 if (state.history.length > 0 && !state.isGameOver) {
@@ -451,6 +681,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     ui.showP2PToast('⚠️ 複製連結失敗，請手動複製 ID', true);
                 });
             },
+            onP2PCreateRoom: (roomName) => {
+                p2p.registerRoom(roomName, state.rulesMode);
+                ui.showP2PToast(`📢 房間 "${roomName || '五子棋對決'}" 已公開，等待對手中...`);
+            },
+            onP2PVoiceToggle: () => toggleVoice(),
             onP2PConnectClick: (peerId) => {
                 if (!peerId) {
                     ui.showP2PToast('⚠️ 請輸入好友的連線 ID', true);
@@ -465,32 +700,49 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             onSendChat: (text) => {
                 if (state.gameMode === 'p2p' && p2p.isConnected()) {
-                    p2p.sendMessage({
+                    p2p.broadcast({
                         type: 'chat',
                         text: text
                     });
                     ui.appendChatMessage('我', text, 'me');
+                } else if (state.isSpectator) {
+                    p2p.broadcast({
+                        type: 'chat',
+                        text: text,
+                        fromSpectator: true,
+                        senderId: p2p.getMyPeerId ? p2p.getMyPeerId() : 'spec'
+                    });
+                    ui.appendChatMessage('我(觀戰)', text, 'me');
                 }
             },
             onSendEmoji: (emoji) => {
                 if (state.gameMode === 'p2p' && p2p.isConnected()) {
-                    p2p.sendMessage({
+                    p2p.broadcast({
                         type: 'emoji',
                         emoji: emoji
                     });
                     ui.appendChatMessage('我', emoji, 'me');
                     ui.showFloatingEmoji(emoji);
+                } else if (state.isSpectator) {
+                    p2p.broadcast({
+                        type: 'emoji',
+                        emoji: emoji,
+                        fromSpectator: true,
+                        senderId: p2p.getMyPeerId ? p2p.getMyPeerId() : 'spec'
+                    });
+                    ui.appendChatMessage('我(觀戰)', emoji, 'me');
+                    ui.showFloatingEmoji(emoji);
                 }
             },
             onSettingChange: (name, value) => {
-                // 處理對弈選項變更
                 if (name === 'gameMode') {
                     if (value === 'p2p') {
-                        // 切換到 P2P 模式
                         p2p.init();
+                        startLobbyPolling();
                     } else {
-                        // 斷開並重置 P2P
+                        stopLobbyPolling();
                         p2p.close();
+                        state.isSpectator = false;
                     }
                     state.gameMode = value;
                     ui.updateSettingButtons('gameMode', value);
@@ -507,13 +759,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     ui.updateSettingButtons('rulesMode', value);
                     resetGame();
                     
-                    // 同步給對手
                     if (state.gameMode === 'p2p' && p2p.isConnected()) {
-                        p2p.sendMessage({
+                        p2p.broadcast({
                             type: 'sync-settings',
                             rulesMode: value
                         });
                     }
+                } else if (name === 'timeLimitRule') {
+                    state.timeLimitRule = value;
+                    ui.updateSettingButtons('timeLimitRule', value);
+                    resetGame();
                 }
             },
             isP2PConnected: () => p2p.isConnected(),
@@ -526,12 +781,23 @@ document.addEventListener('DOMContentLoaded', () => {
             onToast: (msg, isAlert) => ui.showP2PToast(msg, isAlert),
             onConnected: (id) => {
                 ui.setP2PMyId(id);
-                // 自動連線檢測
+                
+                // 檢查是否從 URL 觀戰/對戰連結進入
                 const urlParams = new URLSearchParams(window.location.search);
                 const roomId = urlParams.get('room');
+                const isSpectate = urlParams.get('spectate') === '1';
+                
                 if (roomId && roomId !== id) {
                     window.history.replaceState({}, document.title, window.location.pathname);
-                    p2p.connect(roomId);
+                    if (isSpectate) {
+                        state.gameMode = 'p2p';
+                        ui.updateSettingButtons('gameMode', 'p2p');
+                        state.isSpectator = true;
+                        ui.showP2PToast('👁️ 正在進入觀戰模式...');
+                        p2p.connectSpectator(roomId);
+                    } else {
+                        p2p.connect(roomId);
+                    }
                 }
             },
             onPeerConnected: (oppId, myColor) => {

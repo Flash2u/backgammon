@@ -36,6 +36,7 @@ export const ui = {
         this.dom.hintButtons = document.querySelectorAll('#hint-select button');
         this.dom.rulesButtons = document.querySelectorAll('#rules-select button');
         this.dom.perspectiveButtons = document.querySelectorAll('#perspective-select button');
+        this.dom.timeButtons = document.querySelectorAll('#time-select button');
         
         // Win Modal
         this.dom.winModal = document.getElementById('win-modal');
@@ -72,8 +73,17 @@ export const ui = {
         this.dom.p2pMyId = document.getElementById('p2p-my-id');
         this.dom.p2pStatus = document.getElementById('p2p-status');
         this.dom.btnP2PInvite = document.getElementById('btn-p2p-invite');
+        this.dom.btnP2PSpectate = document.getElementById('btn-p2p-spectate');
         this.dom.p2pPeerIdInput = document.getElementById('p2p-peer-id-input');
         this.dom.btnP2PConnect = document.getElementById('btn-p2p-connect');
+        
+        // P2P Lobby DOM
+        this.dom.p2pRoomNameInput = document.getElementById('p2p-room-name-input');
+        this.dom.btnP2PCreateRoom = document.getElementById('btn-p2p-create-room');
+        this.dom.lobbyRoomsList = document.getElementById('lobby-rooms-list');
+        this.dom.p2pVoiceGroup = document.getElementById('p2p-voice-group');
+        this.dom.btnP2PVoice = document.getElementById('btn-p2p-voice');
+        this.dom.p2pRemoteAudio = document.getElementById('p2p-remote-audio');
         
         // P2P Chat DOM
         this.dom.p2pChatArea = document.getElementById('p2p-chat-area');
@@ -92,6 +102,15 @@ export const ui = {
         this.dom.btnAbout = document.getElementById('btn-about');
         this.dom.aboutModal = document.getElementById('about-modal');
         this.dom.btnAboutClose = document.getElementById('btn-about-close');
+        
+        // AI Monitor DOM
+        this.dom.aiMonitorCard = document.getElementById('ai-monitor-card');
+        this.dom.aiMonitorPulse = document.getElementById('ai-monitor-pulse');
+        this.dom.aiMonitorDepth = document.getElementById('ai-monitor-depth');
+        this.dom.aiMonitorNodes = document.getElementById('ai-monitor-nodes');
+        this.dom.aiMonitorNps = document.getElementById('ai-monitor-nps');
+        this.dom.aiMonitorScore = document.getElementById('ai-monitor-score');
+        this.dom.aiMonitorPv = document.getElementById('ai-monitor-pv');
     },
 
     createBoardGrid() {
@@ -220,6 +239,45 @@ export const ui = {
         // P2P 邀請複製
         this.dom.btnP2PInvite.addEventListener('click', () => this.handlers.onP2PInviteClick());
 
+        // P2P 複製觀戰連結
+        if (this.dom.btnP2PSpectate) {
+            this.dom.btnP2PSpectate.addEventListener('click', () => {
+                const myId = this.dom.p2pMyId.innerText;
+                if (!myId || myId === '---') {
+                    this.showP2PToast('⚠️ 正在取得連線 ID，請稍後...', true);
+                    return;
+                }
+                const spectateUrl = `${window.location.origin}${window.location.pathname}?room=${myId}&spectate=1`;
+                navigator.clipboard.writeText(spectateUrl).then(() => {
+                    this.dom.btnP2PSpectate.innerText = '✅ 已複製觀戰連結！';
+                    setTimeout(() => {
+                        this.dom.btnP2PSpectate.innerText = '👁️ 複製觀戰連結';
+                    }, 2000);
+                }).catch(() => {
+                    this.showP2PToast('⚠️ 複製連結失敗，請手動複製 ID', true);
+                });
+            });
+        }
+
+        // P2P 創建公開房間
+        if (this.dom.btnP2PCreateRoom) {
+            this.dom.btnP2PCreateRoom.addEventListener('click', () => {
+                const roomName = this.dom.p2pRoomNameInput.value.trim();
+                if (this.handlers.onP2PCreateRoom) {
+                    this.handlers.onP2PCreateRoom(roomName);
+                }
+            });
+        }
+
+        // P2P 開啟語音對話
+        if (this.dom.btnP2PVoice) {
+            this.dom.btnP2PVoice.addEventListener('click', () => {
+                if (this.handlers.onP2PVoiceToggle) {
+                    this.handlers.onP2PVoiceToggle();
+                }
+            });
+        }
+
         // P2P 連線
         this.dom.btnP2PConnect.addEventListener('click', () => {
             const peerId = this.dom.p2pPeerIdInput.value.trim();
@@ -285,6 +343,16 @@ export const ui = {
                 this.handlers.onSettingChange('aiDifficulty', diff);
             });
         });
+
+        // 限時
+        if (this.dom.timeButtons) {
+            this.dom.timeButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const time = btn.dataset.time;
+                    this.handlers.onSettingChange('timeLimitRule', time);
+                });
+            });
+        }
 
         // 提示
         this.dom.hintButtons.forEach(btn => {
@@ -417,38 +485,78 @@ export const ui = {
             ? (isThemeNeon ? '#00f2fe' : '#1e293b') 
             : (isThemeNeon ? '#f472b6' : '#ffffff');
 
-        const particleCount = 10;
+        const particleCount = 15 + Math.floor(Math.random() * 6); // 15~20 物理粒子
+        const particles = [];
 
         for (let i = 0; i < particleCount; i++) {
             const p = document.createElement('div');
             p.className = 'particle';
-
-            const angle = Math.random() * Math.PI * 2;
-            const distance = 25 + Math.random() * 35;
-            const tx = Math.cos(angle) * distance;
-            const ty = Math.sin(angle) * distance;
-
-            p.style.setProperty('--tx', `${tx}px`);
-            p.style.setProperty('--ty', `${ty}px`);
             
-            const size = 3 + Math.random() * 5;
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 2 + Math.random() * 5;
+            
+            const vx = Math.cos(angle) * speed;
+            const vy = Math.sin(angle) * speed - 1.5; // 帶一個向上的初速度，形成優雅的拋射噴散
+            
+            const size = 3 + Math.random() * 4;
             p.style.width = `${size}px`;
             p.style.height = `${size}px`;
             p.style.background = particleColor;
+            p.style.position = 'absolute';
+            p.style.borderRadius = '50%';
+            p.style.pointerEvents = 'none';
+            p.style.zIndex = '10';
             
-            p.style.left = `${centerX}px`;
-            p.style.top = `${centerY}px`;
-
             if (isThemeNeon) {
-                p.style.boxShadow = `0 0 6px ${particleColor}`;
+                p.style.boxShadow = `0 0 6px ${particleColor}, 0 0 10px ${particleColor}`;
             }
 
+            p.style.left = `${centerX}px`;
+            p.style.top = `${centerY}px`;
+            
             this.dom.board.appendChild(p);
 
-            setTimeout(() => {
-                p.remove();
-            }, 600);
+            particles.push({
+                el: p,
+                x: centerX,
+                y: centerY,
+                vx: vx,
+                vy: vy,
+                alpha: 1,
+                decay: 0.02 + Math.random() * 0.02
+            });
         }
+
+        const gravity = 0.12; // 重力加速度
+        const friction = 0.98; // 空氣阻力阻尼
+
+        const self = this;
+        function updatePhysics() {
+            let activeCount = 0;
+            particles.forEach(p => {
+                if (p.alpha <= 0) return;
+                activeCount++;
+                
+                // 歐拉物理積分
+                p.vx *= friction;
+                p.vy = (p.vy + gravity) * friction;
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= p.decay;
+                
+                p.el.style.left = `${p.x}px`;
+                p.el.style.top = `${p.y}px`;
+                p.el.style.opacity = Math.max(0, p.alpha);
+                
+                if (p.alpha <= 0) {
+                    p.el.remove();
+                }
+            });
+            if (activeCount > 0) {
+                requestAnimationFrame(updatePhysics);
+            }
+        }
+        requestAnimationFrame(updatePhysics);
     },
 
     updateThreatHints(hints) {
@@ -468,24 +576,37 @@ export const ui = {
                 
                 if (hint.black) ring.classList.add('threat-black');
                 if (hint.white) ring.classList.add('threat-white');
-
+ 
                 cell.appendChild(ring);
             }
         });
     },
-
+ 
     clearThreatHints() {
         const rings = this.dom.board.querySelectorAll('.threat-ring');
         rings.forEach(r => r.remove());
     },
-
+ 
     updateForbiddenMoves(forbiddenList) {
         const cells = this.dom.board.querySelectorAll('.cell');
-        cells.forEach(c => c.classList.remove('forbidden'));
+        cells.forEach(c => {
+            c.classList.remove('forbidden');
+            const marker = c.querySelector('.forbidden-marker');
+            if (marker) marker.remove();
+        });
 
         forbiddenList.forEach(pos => {
             const cell = this.dom.board.querySelector(`[data-row="${pos.r}"][data-col="${pos.c}"]`);
-            if (cell) cell.classList.add('forbidden');
+            if (cell) {
+                cell.classList.add('forbidden');
+                // 只有在黑棋回合且格子為空時才常態標記淡紅色發光 ×
+                if (this.state.currentTurn === 1 && !cell.classList.contains('has-stone')) {
+                    const marker = document.createElement('div');
+                    marker.className = 'forbidden-marker';
+                    marker.innerText = '×';
+                    cell.appendChild(marker);
+                }
+            }
         });
     },
 
@@ -777,11 +898,15 @@ export const ui = {
             });
             this.dom.difficultyGroup.style.display = value === 'ai' ? 'block' : 'none';
             this.dom.p2pCard.style.display = value === 'p2p' ? 'block' : 'none';
+            
+            // 當前是 AI 模式且是困難難度，顯示 AI 監控面板，否則隱藏
+            this.showAIMonitor(value === 'ai' && this.state.aiDifficulty === 'hard');
             this.updateChatAreaVisibility();
         } else if (name === 'aiDifficulty') {
             this.dom.difficultyButtons.forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.diff === value);
             });
+            this.showAIMonitor(this.state.gameMode === 'ai' && value === 'hard');
         } else if (name === 'hintEnabled') {
             this.dom.hintButtons.forEach(btn => {
                 const isBtnOn = btn.dataset.hint === 'on';
@@ -791,6 +916,12 @@ export const ui = {
             this.dom.rulesButtons.forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.rules === value);
             });
+        } else if (name === 'timeLimitRule') {
+            if (this.dom.timeButtons) {
+                this.dom.timeButtons.forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.time === value);
+                });
+            }
         }
     },
 
@@ -811,6 +942,152 @@ export const ui = {
         } else {
             onComplete();
         }
+    },
+
+    // ==========================================================================
+    // 大廳房間列表渲染 (v2.0.0)
+    // ==========================================================================
+    renderLobbyRooms(rooms, error = null) {
+        if (!this.dom.lobbyRoomsList) return;
+        this.dom.lobbyRoomsList.innerHTML = '';
+        
+        if (error) {
+            this.dom.lobbyRoomsList.innerHTML = '<div style="text-align: center; padding: 12px; color: #ef4444; font-weight: 500;">⚠️ 大廳載入失敗 (請檢查網路或稍後重試)</div>';
+            return;
+        }
+        
+        if (!rooms) rooms = [];
+        
+        // 過濾掉自己的 Peer ID
+        const myId = this.dom.p2pMyId ? this.dom.p2pMyId.innerText : '---';
+        const availableRooms = rooms.filter(room => room.id !== myId);
+        
+        if (availableRooms.length === 0) {
+            this.dom.lobbyRoomsList.innerHTML = '<div style="text-align: center; padding: 12px; color: var(--text-muted);">目前無等待中的公開房間</div>';
+            return;
+        }
+        
+        availableRooms.forEach(room => {
+            const item = document.createElement('div');
+            item.className = 'lobby-room-item';
+            
+            const info = document.createElement('div');
+            info.className = 'lobby-room-info';
+            info.innerHTML = `<span class="lobby-room-name" style="font-weight:600; color:var(--text-primary);">${room.name}</span><span style="font-size: 0.75rem; color: var(--text-muted); margin-left: 6px;">(${room.rulesMode === 'renju' ? '禁手' : '標準'})</span>`;
+            
+            const btn = document.createElement('button');
+            btn.className = 'lobby-room-btn';
+            btn.innerText = '一鍵配對';
+            
+            btn.addEventListener('click', () => {
+                this.handlers.onP2PConnectClick(room.id);
+            });
+            
+            item.appendChild(info);
+            item.appendChild(btn);
+            this.dom.lobbyRoomsList.appendChild(item);
+        });
+    },
+
+    // ==========================================================================
+    // WebRTC 語音通話狀態更新 (v2.0.0)
+    // ==========================================================================
+    setVoiceUIActive(active, isCalling = false) {
+        if (!this.dom.btnP2PVoice) return;
+        if (active) {
+            this.dom.btnP2PVoice.classList.add('active');
+            this.dom.btnP2PVoice.innerHTML = '<span class="btn-icon">🎙️</span> 語音通話中 (點擊關閉)';
+            this.dom.btnP2PVoice.style.background = 'var(--accent-secondary)';
+            this.dom.btnP2PVoice.style.color = '#fff';
+        } else {
+            this.dom.btnP2PVoice.classList.remove('active');
+            this.dom.btnP2PVoice.innerHTML = `<span class="btn-icon">🎙️</span> ${isCalling ? '正在連線中...' : '開啟語音對話'}`;
+            this.dom.btnP2PVoice.style.background = '';
+            this.dom.btnP2PVoice.style.color = '';
+        }
+    },
+
+    // ==========================================================================
+    // AI 思考可視化終端 (v2.0.0)
+    // ==========================================================================
+    showAIMonitor(show) {
+        if (!this.dom.aiMonitorCard) return;
+        this.dom.aiMonitorCard.style.display = show ? 'block' : 'none';
+        if (this.dom.aiMonitorPulse) {
+            this.dom.aiMonitorPulse.style.display = show ? 'inline-block' : 'none';
+        }
+        if (!show) {
+            this.clearVirtualAIStones();
+        }
+    },
+
+    updateAIMonitor(progress) {
+        if (!this.dom.aiMonitorCard || this.dom.aiMonitorCard.style.display === 'none') return;
+        
+        if (this.dom.aiMonitorDepth) {
+            this.dom.aiMonitorDepth.innerText = `迭代深度: ${progress.depth} 層`;
+        }
+        if (this.dom.aiMonitorNodes) {
+            this.dom.aiMonitorNodes.innerText = `計算節點: ${progress.nodes} 個`;
+        }
+        if (this.dom.aiMonitorNps) {
+            this.dom.aiMonitorNps.innerText = `每秒算力: ${progress.nps} NPS`;
+        }
+        if (this.dom.aiMonitorScore) {
+            const scoreVal = progress.score;
+            let scoreText = scoreVal.toString();
+            if (scoreVal > 50000000) scoreText = 'AI 必勝 👑';
+            else if (scoreVal < -50000000) scoreText = '玩家必勝 👑';
+            this.dom.aiMonitorScore.innerText = `局勢估分: ${scoreText}`;
+        }
+        if (this.dom.aiMonitorPv) {
+            if (progress.pv && progress.pv.length > 0) {
+                const movesStr = progress.pv.map(m => `(${m.r},${m.c})`).join(' ➜ ');
+                this.dom.aiMonitorPv.innerText = `預測路徑: ${movesStr}`;
+                // 在棋盤上繪製虛擬預覽子
+                this.renderVirtualAIStones(progress.pv);
+            } else {
+                this.dom.aiMonitorPv.innerText = '預測路徑: -';
+            }
+        }
+    },
+
+    renderVirtualAIStones(pv) {
+        this.clearVirtualAIStones();
+        if (!pv || pv.length === 0) return;
+        
+        const aiColor = 3 - this.state.playerColor; // AI 的顏色
+        pv.forEach((move, index) => {
+            const cell = this.dom.board.querySelector(`[data-row="${move.r}"][data-col="${move.c}"]`);
+            if (cell && !cell.classList.contains('has-stone')) {
+                const vStone = document.createElement('div');
+                // 動態輪流黑白預覽
+                const color = (index % 2 === 0) ? aiColor : (3 - aiColor);
+                vStone.className = `stone virtual-stone ${color === 1 ? 'black' : 'white'}`;
+                
+                // 加上半透明及發光樣式
+                vStone.style.opacity = '0.35';
+                vStone.style.boxShadow = 'none';
+                vStone.style.pointerEvents = 'none';
+                vStone.style.zIndex = '4';
+                
+                // 標註順序數字
+                const number = document.createElement('div');
+                number.style.fontSize = '10px';
+                number.style.fontWeight = 'bold';
+                number.style.color = color === 1 ? '#fff' : '#000';
+                number.innerText = index + 1;
+                vStone.appendChild(number);
+                
+                cell.appendChild(vStone);
+            }
+        });
+    },
+
+    clearVirtualAIStones() {
+        const vStones = this.dom.board.querySelectorAll('.virtual-stone');
+        vStones.forEach(s => s.remove());
     }
 };
+
 

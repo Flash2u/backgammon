@@ -192,14 +192,251 @@ export const audio = {
 
     toggleSound() {
         soundEnabled = !soundEnabled;
+        if (!soundEnabled) {
+            this.stopBGM();
+        } else if (this.bgmTheme) {
+            this.startBGM(this.bgmTheme);
+        }
         return soundEnabled;
     },
 
     setEnabled(enabled) {
         soundEnabled = enabled;
+        if (!soundEnabled) {
+            this.stopBGM();
+        } else if (this.bgmTheme) {
+            this.startBGM(this.bgmTheme);
+        }
     },
 
     isEnabled() {
         return soundEnabled;
+    },
+
+    // ==========================================================================
+    // 讀秒倒數嗶聲 (v2.0.0)
+    // ==========================================================================
+    playCountdownBeep(seconds) {
+        if (!soundEnabled) return;
+        try {
+            initAudio();
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'sine';
+            const freq = seconds <= 3 ? 1000 : 800; // 最後 3 秒頻率更尖銳
+            osc.frequency.setValueAtTime(freq, now);
+            
+            gain.gain.setValueAtTime(0.08, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start(now);
+            osc.stop(now + 0.06);
+        } catch (e) {
+            console.warn("Failed to play countdown beep", e);
+        }
+    },
+
+    // ==========================================================================
+    // Web Audio API 背景氛圍音樂合成器 (v2.0.0)
+    // ==========================================================================
+    bgmNode: null,
+    bgmSources: [],
+    bgmTheme: null,
+    bgmWaterTimeout: null,
+
+    startBGM(theme) {
+        this.bgmTheme = theme;
+        if (!soundEnabled) return;
+        this.stopBGM();
+        
+        try {
+            initAudio();
+            const now = audioCtx.currentTime;
+            
+            if (theme === 'neon') {
+                // Synthwave Pad: 低通鋸齒波 + 慢速 LFO 頻率調變
+                const freqs = [65.41, 98.00, 130.81]; // C2, G2, C3
+                const sources = [];
+                
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(250, now);
+                filter.Q.setValueAtTime(1, now);
+                
+                const lfo = audioCtx.createOscillator();
+                lfo.type = 'sine';
+                lfo.frequency.setValueAtTime(0.15, now); // 慢速調變
+                
+                const lfoGain = audioCtx.createGain();
+                lfoGain.gain.setValueAtTime(70, now);
+                
+                lfo.connect(lfoGain);
+                lfoGain.connect(filter.frequency);
+                lfo.start(now);
+                sources.push(lfo);
+
+                const masterGain = audioCtx.createGain();
+                masterGain.gain.setValueAtTime(0.035, now); // 輕柔
+
+                freqs.forEach(freq => {
+                    const osc = audioCtx.createOscillator();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(freq, now);
+                    osc.detune.setValueAtTime((Math.random() - 0.5) * 8, now);
+                    
+                    osc.connect(filter);
+                    osc.start(now);
+                    sources.push(osc);
+                });
+
+                filter.connect(masterGain);
+                masterGain.connect(audioCtx.destination);
+                
+                this.bgmSources = sources;
+                this.bgmNode = masterGain;
+
+            } else if (theme === 'wood') {
+                // 竹林風聲與空靈水滴聲
+                const bufferSize = audioCtx.sampleRate * 2;
+                const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const output = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    output[i] = Math.random() * 2 - 1;
+                }
+                
+                const whiteNoise = audioCtx.createBufferSource();
+                whiteNoise.buffer = noiseBuffer;
+                whiteNoise.loop = true;
+                
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.setValueAtTime(450, now);
+                filter.Q.setValueAtTime(1.5, now);
+                
+                const lfo = audioCtx.createOscillator();
+                lfo.type = 'sine';
+                lfo.frequency.setValueAtTime(0.08, now);
+                
+                const lfoGain = audioCtx.createGain();
+                lfoGain.gain.setValueAtTime(200, now);
+                
+                lfo.connect(lfoGain);
+                lfoGain.connect(filter.frequency);
+                
+                const masterGain = audioCtx.createGain();
+                masterGain.gain.setValueAtTime(0.015, now); // 風聲極小
+
+                whiteNoise.connect(filter);
+                filter.connect(masterGain);
+                masterGain.connect(audioCtx.destination);
+                
+                whiteNoise.start(now);
+                lfo.start(now);
+                
+                this.bgmSources = [whiteNoise, lfo];
+                
+                // 禪意水滴
+                const playWaterDrop = () => {
+                    if (!soundEnabled || this.bgmTheme !== 'wood') return;
+                    try {
+                        const dNow = audioCtx.currentTime;
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        
+                        osc.type = 'sine';
+                        const dropFreq = 1000 + Math.random() * 600;
+                        osc.frequency.setValueAtTime(dropFreq, dNow);
+                        osc.frequency.exponentialRampToValueAtTime(dropFreq * 1.4, dNow + 0.06);
+                        
+                        gain.gain.setValueAtTime(0.012, dNow);
+                        gain.gain.exponentialRampToValueAtTime(0.001, dNow + 0.08);
+                        
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(dNow);
+                        osc.stop(dNow + 0.1);
+                    } catch(e) {}
+                    
+                    const nextTime = 3000 + Math.random() * 5000;
+                    this.bgmWaterTimeout = setTimeout(playWaterDrop, nextTime);
+                };
+                playWaterDrop();
+                
+                this.bgmNode = masterGain;
+
+            } else if (theme === 'slate') {
+                // 雅緻板岩：慢包絡呼吸正弦波和聲
+                const freqs = [130.81, 164.81, 196.00, 246.94]; // C3, E3, G3, B3
+                const sources = [];
+                
+                const masterGain = audioCtx.createGain();
+                masterGain.gain.setValueAtTime(0.025, now);
+
+                freqs.forEach(freq => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now);
+                    
+                    const cycle = 6 + Math.random() * 8;
+                    const lfo = audioCtx.createOscillator();
+                    lfo.type = 'sine';
+                    lfo.frequency.setValueAtTime(1 / cycle, now);
+                    
+                    const lfoGain = audioCtx.createGain();
+                    lfoGain.gain.setValueAtTime(0.35, now);
+                    
+                    const offsetGain = audioCtx.createGain();
+                    offsetGain.gain.setValueAtTime(0.45, now);
+                    
+                    lfo.connect(lfoGain);
+                    lfoGain.connect(gain.gain);
+                    offsetGain.connect(gain.gain);
+                    
+                    osc.connect(gain);
+                    gain.connect(masterGain);
+                    
+                    osc.start(now);
+                    lfo.start(now);
+                    
+                    sources.push(osc);
+                    sources.push(lfo);
+                });
+                
+                masterGain.connect(audioCtx.destination);
+                this.bgmSources = sources;
+                this.bgmNode = masterGain;
+            }
+        } catch (e) {
+            console.warn("Failed to start BGM", e);
+        }
+    },
+
+    stopBGM() {
+        if (this.bgmWaterTimeout) {
+            clearTimeout(this.bgmWaterTimeout);
+            this.bgmWaterTimeout = null;
+        }
+        if (this.bgmSources && this.bgmSources.length > 0) {
+            this.bgmSources.forEach(src => {
+                try {
+                    src.stop();
+                } catch(e) {}
+            });
+            this.bgmSources = [];
+        }
+        if (this.bgmNode) {
+            try {
+                this.bgmNode.disconnect();
+            } catch(e) {}
+            this.bgmNode = null;
+        }
     }
 };
+
