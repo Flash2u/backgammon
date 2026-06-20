@@ -26,6 +26,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let rulesMode = 'standard'; // 'standard' (標準) 或 'renju' (禁手)
     let aiWorker = null;        // Web Worker 實例
 
+    // 視角狀態變數
+    let viewMode = '2d';        // '2d' (平面) 或 '3d' (立體)
+
     // P2P 線上對戰狀態變數
     let peer = null;            // PeerJS 實例
     let p2pConn = null;         // Connection 實例
@@ -60,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const themeButtons = document.querySelectorAll('.theme-selector button');
     const hintButtons = document.querySelectorAll('#hint-select button');
     const rulesButtons = document.querySelectorAll('#rules-select button');
+    const perspectiveButtons = document.querySelectorAll('#perspective-select button');
     
     // Win Modal
     const winModal = document.getElementById('win-modal');
@@ -1043,6 +1047,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const savedRules = localStorage.getItem('cyber_gomoku_rules') || 'standard';
         setRulesMode(savedRules);
+
+        const savedView = localStorage.getItem('cyber_gomoku_view') || '2d';
+        setPerspectiveView(savedView);
     }
 
     function setTheme(theme) {
@@ -1135,6 +1142,27 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         localStorage.setItem('cyber_gomoku_rules', mode);
         updateForbiddenMoves();
+    }
+
+    function setPerspectiveView(view) {
+        viewMode = view;
+        perspectiveButtons.forEach(btn => {
+            if (btn.dataset.view === view) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
+        const boardWrapper = document.querySelector('.board-wrapper');
+        if (boardWrapper) {
+            if (view === '3d') {
+                boardWrapper.classList.add('view-3d');
+            } else {
+                boardWrapper.classList.remove('view-3d');
+            }
+        }
+        localStorage.setItem('cyber_gomoku_view', view);
     }
 
     function updateSoundButtonUI() {
@@ -1515,6 +1543,17 @@ document.addEventListener('DOMContentLoaded', () => {
             initAudio();
             const selectedTheme = btn.dataset.theme;
             setTheme(selectedTheme);
+        });
+    });
+
+    // 視角切換
+    perspectiveButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            initAudio();
+            const selectedView = btn.dataset.view;
+            if (selectedView !== viewMode) {
+                setPerspectiveView(selectedView);
+            }
         });
     });
 

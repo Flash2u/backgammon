@@ -1085,3 +1085,113 @@ body.theme-neon #btn-p2p-invite {
 body.theme-neon #btn-p2p-invite:hover {
     box-shadow: 0 0 18px rgba(255, 0, 127, 0.5);
 }
+
+/* ==========================================================================
+   3D 擬真傾斜視角 (3D Perspective View) 樣式
+   ========================================================================== */
+
+/* 棋盤父容器景深與 3D 渲染開啟 */
+.board-container {
+    perspective: 1200px;
+    transform-style: preserve-3d;
+}
+
+/* 3D 視角下的棋盤傾斜與厚度投影 (隨不同主題變色) */
+.board-wrapper {
+    transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.6s ease;
+    transform-style: preserve-3d;
+}
+
+/* 3D 傾斜轉換 */
+.board-wrapper.view-3d {
+    transform: rotateX(32deg) rotateY(0deg) rotateZ(-12deg) translateY(-10px);
+}
+
+/* 3D 模式下黑子與白子的懸浮與更真實的立體投影偏置 */
+.board-wrapper.view-3d .stone {
+    transform-style: preserve-3d;
+    box-shadow: -4px 6px 10px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* 3D 模式下半透明預覽棋子的立體化 */
+.board-wrapper.view-3d .hover-preview {
+    transform: translateZ(6px) scale(1) !important;
+    box-shadow: -2px 4px 8px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* 3D 落子高空墜地砸向棋盤的動畫 */
+@keyframes placeStone3D {
+    0% {
+        transform: translateZ(40px) scale(0);
+        opacity: 0;
+    }
+    70% {
+        transform: translateZ(8px) scale(1.08);
+        opacity: 0.9;
+    }
+    85% {
+        transform: translateZ(12px) scale(0.96);
+        opacity: 0.95;
+    }
+    100% {
+        transform: translateZ(10px) scale(1);
+        opacity: 1;
+    }
+}
+
+.board-wrapper.view-3d .stone {
+    animation: placeStone3D 0.26s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+/* 3D 模式下威脅提示圈與禁手標記微幅提升，防範與棋面 Z 軸重疊產生 Z-fighting */
+.board-wrapper.view-3d .threat-hint-circle,
+.board-wrapper.view-3d .cell.forbidden:not(.has-stone):hover .hover-preview {
+    transform: translateZ(6px) !important;
+}
+
+/* --- 各主題 3D 厚度邊界與投影效果 --- */
+
+/* 1. 暗黑霓虹 (Cyber Neon) 主題 3D 立體側邊 */
+body.theme-neon .board-wrapper.view-3d {
+    box-shadow: 
+        -1px 1px 0px rgba(0, 242, 254, 0.8),
+        -2px 2px 0px rgba(0, 242, 254, 0.7),
+        -3px 3px 0px rgba(0, 242, 254, 0.6),
+        -4px 4px 0px rgba(0, 242, 254, 0.5),
+        -5px 5px 0px rgba(0, 242, 254, 0.4),
+        -6px 6px 0px rgba(0, 242, 254, 0.3),
+        -7px 7px 0px rgba(0, 242, 254, 0.2),
+        -8px 8px 0px rgba(0, 242, 254, 0.1),
+        -10px 10px 30px rgba(0, 242, 254, 0.15),
+        -25px 25px 50px rgba(0, 0, 0, 0.75);
+}
+
+/* 2. 經典木紋 (Classic Wood) 主題 3D 立體側邊 */
+body.theme-wood .board-wrapper.view-3d {
+    box-shadow: 
+        -1px 1px 0px #8b5a2b,
+        -2px 2px 0px #8b5a2b,
+        -3px 3px 0px #704822,
+        -4px 4px 0px #704822,
+        -5px 5px 0px #5c3b1c,
+        -6px 6px 0px #5c3b1c,
+        -7px 7px 0px #4a2f16,
+        -8px 8px 0px #4a2f16,
+        -10px 10px 25px rgba(61, 43, 22, 0.4),
+        -25px 25px 45px rgba(0, 0, 0, 0.7);
+}
+
+/* 3. 極簡雅緻 (Minimalist Slate) 主題 3D 立體側邊 */
+body.theme-slate .board-wrapper.view-3d {
+    box-shadow: 
+        -1px 1px 0px #94a3b8,
+        -2px 2px 0px #94a3b8,
+        -3px 3px 0px #64748b,
+        -4px 4px 0px #64748b,
+        -5px 5px 0px #475569,
+        -6px 6px 0px #475569,
+        -7px 7px 0px #334155,
+        -8px 8px 0px #334155,
+        -10px 10px 20px rgba(0, 0, 0, 0.12),
+        -20px 20px 40px rgba(0, 0, 0, 0.28);
+}
