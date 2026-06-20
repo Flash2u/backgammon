@@ -52,6 +52,7 @@ export const p2p = {
             port: 443,
             secure: true,
             path: '/',
+            key: 'peerjs',
             config: {
                 iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' },
@@ -506,15 +507,20 @@ export const p2p = {
         // 本地暫存，以便其他 client request 時隨時重發
         localStorage.setItem('gomoku_registered_room', JSON.stringify(roomData));
 
-        // 1. KVDB REST 備援寫入
+        // 1. KVDB REST 備援寫入 (加上 3 秒超時)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
         try {
             await fetch(`${LOBBY_URL}/${peer.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(roomData)
+                body: JSON.stringify(roomData),
+                signal: controller.signal
             });
+            clearTimeout(timeoutId);
             console.log("Room registered in KVDB lobby:", roomData);
         } catch (e) {
+            clearTimeout(timeoutId);
             console.error("Failed to register room in KVDB lobby:", e);
         }
 
@@ -534,13 +540,18 @@ export const p2p = {
         if (!peer || !peer.id) return;
         localStorage.removeItem('gomoku_registered_room');
 
-        // 1. KVDB REST 備援刪除
+        // 1. KVDB REST 備援刪除 (加上 3 秒超時)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
         try {
             await fetch(`${LOBBY_URL}/${peer.id}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                signal: controller.signal
             });
+            clearTimeout(timeoutId);
             console.log("Room unregistered from KVDB lobby");
         } catch (e) {
+            clearTimeout(timeoutId);
             console.error("Failed to unregister room from KVDB:", e);
         }
 

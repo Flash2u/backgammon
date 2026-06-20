@@ -937,15 +937,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 if (roomId && roomId !== id) {
                     window.history.replaceState({}, document.title, window.location.pathname);
+                    state.gameMode = 'p2p';
+                    ui.updateSettingButtons('gameMode', 'p2p');
+                    startLobbyPolling(); // 確保客方大廳也正常開始輪詢更新，不卡死在載入中
+                    
                     if (isSpectate) {
-                        state.gameMode = 'p2p';
-                        ui.updateSettingButtons('gameMode', 'p2p');
                         state.isSpectator = true;
                         ui.showP2PToast('👁️ 正在進入觀戰模式...');
                         p2p.connectSpectator(roomId);
                     } else {
-                        state.gameMode = 'p2p';
-                        ui.updateSettingButtons('gameMode', 'p2p');
                         ui.showP2PToast('🔌 正在與房主連線，請稍後...');
                         p2p.connect(roomId);
                     }
@@ -975,6 +975,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ui.showP2PToast('🔌 對手已斷線！已自動為對手啟用 AI 託管代打。', true);
                 state.gameMode = 'ai';
                 ui.updateSettingButtons('gameMode', 'ai');
+                ui.updateTurnUI(); // 重新整理狀態欄文字為人機對戰提示，避免殘留等待連線
                 if (state.currentTurn !== state.playerColor) {
                     triggerAIMove();
                 }
