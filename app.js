@@ -5,7 +5,7 @@ import { p2p } from './src/p2p.js';
 
 
 
-document.addEventListener('DOMContentLoaded', () => {
+function startApp() {
     let isUndoing = false;
     let gameSeconds = 0;
     let timerInterval = null;
@@ -993,6 +993,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     initGame();
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startApp);
+} else {
+    startApp();
+}
 
 
