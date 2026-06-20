@@ -575,6 +575,7 @@ body.theme-slate .stat-item {
     justify-content: center;
     align-items: center;
     width: 100%;
+    pointer-events: none; /* 穿透容器，防止 3D 傾斜時遮擋棋盤 */
 }
 
 .board-wrapper {
@@ -587,6 +588,7 @@ body.theme-slate .stat-item {
     width: 100%;
     max-width: 620px;
     aspect-ratio: 1 / 1;
+    pointer-events: auto; /* 確保棋盤及子元素可點擊 */
 }
 
 body.theme-wood .board-wrapper {
@@ -614,6 +616,7 @@ body.theme-slate .board-wrapper {
     display: flex;
     justify-content: center;
     align-items: center;
+    background-color: rgba(0, 0, 0, 0); /* 實體化點擊面，避免 3D 下點擊穿透 */
 }
 
 /* The vertical and horizontal board lines */
@@ -1194,4 +1197,10 @@ body.theme-slate .board-wrapper.view-3d {
         -8px 8px 0px #334155,
         -10px 10px 20px rgba(0, 0, 0, 0.12),
         -20px 20px 40px rgba(0, 0, 0, 0.28);
+}
+
+/* 啟用 3D 空間層級傳遞，確保 3D 傾斜下格點滑鼠點擊命中率 100% 精準 */
+.gomoku-board,
+.cell {
+    transform-style: preserve-3d;
 }

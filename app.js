@@ -130,9 +130,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 hoverPreview.className = 'hover-preview';
                 cell.appendChild(hoverPreview);
 
-                // 落子點擊事件
-                cell.addEventListener('click', () => handleCellClick(r, c));
-
                 boardEl.appendChild(cell);
             }
         }
@@ -1216,7 +1213,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setP2PStatus('連線信令伺服器中...');
         peer = new Peer(null, {
-            debug: 1
+            debug: 1,
+            host: '0.peerjs.com',
+            port: 443,
+            secure: true,
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' },
+                    { urls: 'stun:stun3.l.google.com:19302' },
+                    { urls: 'stun:stun4.l.google.com:19302' }
+                ]
+            }
         });
 
         peer.on('open', (id) => {
@@ -1273,7 +1282,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function setupP2PConnection(conn) {
-        conn.on('open', () => {
+        const onConnOpen = () => {
             setP2PStatus(`已連線 (對手: ${conn.peer})`, 'var(--accent-secondary)');
             
             // 房主連線成功後，初始化遊戲設定並同步給客方
@@ -1289,7 +1298,13 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 showP2PToast('連線成功！等待房主 (黑棋) 開始並落子');
             }
-        });
+        };
+
+        if (conn.open) {
+            onConnOpen();
+        } else {
+            conn.on('open', onConnOpen);
+        }
 
         conn.on('data', (data) => {
             handleP2PData(data);
@@ -1642,6 +1657,42 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         connectToPeer(targetId);
+    });
+
+    // 棋盤點擊事件委派與 Proximity 命中補償機制
+    boardEl.parentElement.addEventListener('click', (e) => {
+        // 優先透過 DOM 樹尋找最近的 cell 元素
+        const cell = e.target.closest('.cell');
+        if (cell) {
+            const r = parseInt(cell.dataset.row);
+            const c = parseInt(cell.dataset.col);
+            handleCellClick(r, c);
+            return;
+        }
+
+        // Proximity 補償：如果點擊落在格線縫隙、棋盤邊界或外層 wrapper 上
+        // 我們計算點擊 client 坐標與所有格子中心的距離，找出最近的格子落子
+        let minDistance = Infinity;
+        let closestCell = null;
+        const cells = boardEl.querySelectorAll('.cell');
+        
+        cells.forEach(c => {
+            const rect = c.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            const dist = Math.hypot(e.clientX - cx, e.clientY - cy);
+            if (dist < minDistance) {
+                minDistance = dist;
+                closestCell = c;
+            }
+        });
+
+        // 只要最近距離在 cell 寬度的 1.5 倍半徑內，就判定為點擊該 cell
+        if (closestCell && minDistance < closestCell.offsetWidth * 1.5) {
+            const r = parseInt(closestCell.dataset.row);
+            const c = parseInt(closestCell.dataset.col);
+            handleCellClick(r, c);
+        }
     });
 
     // 啟動初始化
