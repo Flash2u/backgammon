@@ -31,6 +31,7 @@ let callbacks = {
 export const p2p = {
     init(cbs) {
         callbacks = { ...callbacks, ...cbs };
+        console.log("🚀 [P2P] 模組初始化成功。版本：2.0.2 (STUN 擴充與超時偵測版)");
 
         if (typeof Peer === 'undefined') {
             callbacks.onStatusChange('❌ 無法載入 P2P 模組', '#ef4444');
