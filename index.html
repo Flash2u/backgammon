@@ -95,6 +95,9 @@
                             <span class="btn-icon" id="sound-icon">🔊</span> 音效: 開
                         </button>
                     </div>
+                    <button id="btn-about" class="btn-secondary" style="width: 100%; margin-top: 12px;">
+                        <span class="btn-icon">ℹ️</span> 關於遊戲
+                    </button>
                 </div>
 
                 <!-- Statistics Card -->
@@ -141,8 +144,36 @@
         </div>
     </div>
 
+    <!-- About Modal (Popup Dialog) -->
+    <div class="modal-overlay" id="about-modal">
+        <div class="glass-card modal-content" style="max-width: 480px;">
+            <div class="modal-glow"></div>
+            <h2 class="modal-title">關於遊戲</h2>
+            <div class="modal-scroll-area">
+                <p style="margin-bottom: 12px; font-weight: 600; text-align: center; font-size: 1rem; color: var(--text-primary);">🌌 Cyber Gomoku - 極致美學五子棋</p>
+                <p style="margin-bottom: 6px;"><strong>目前版本：</strong>v1.2.0</p>
+                <p style="margin-bottom: 6px;"><strong>發布日期：</strong>2026-06-20</p>
+                <p style="margin-bottom: 12px;"><strong>開發團隊：</strong>Antigravity AI Co-Pilot & Yuki</p>
+                <hr>
+                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">🛠️ 本版本摘要 (v1.2.0)：</p>
+                <ul>
+                    <li>ℹ️ **新增「關於遊戲」面板**：可在遊戲內點擊查看版號、發布日期與更新簡介。</li>
+                    <li>📈 **版本遞增機制**：正式進入 v1.2.0，確立每次更新遞增 0.1 規範。</li>
+                    <li>⚖️ **專業禁手規則 (Renju Rules)**：支援三三、四四、長連禁手警告與點擊攔截。</li>
+                    <li>🧠 **Web Workers 背景運算**：Minimax AI 計算在背景獨立執行緒進行，主畫面零卡頓。</li>
+                    <li>⚡ **Zobrist 雜湊與置換表**：優化重複局面估值計算，AI 決策效率倍增。</li>
+                </ul>
+                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">📜 遊戲玩法簡介：</p>
+                <p>黑白雙方輪流落子，先在橫、豎、斜任意方向連成連續五子者獲勝。開啟「禁手規則」時，黑棋（先手）下入「三三」、「四四」或「長連」點將被判定無效並播放警告音效與狀態列紅字提示。</p>
+            </div>
+            <div class="modal-actions">
+                <button id="btn-about-close" class="btn-primary">確定</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Load scripts at the end -->
-    <script src="ai.js"></script>
-    <script src="app.js"></script>
+    <script src="ai.js?v=1.2.0"></script>
+    <script src="app.js?v=1.2.0"></script>
 </body>
 </html>

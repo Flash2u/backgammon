@@ -1,4 +1,4 @@
-# 🌌 Cyber Gomoku - 極致美學五子棋
+﻿# 🌌 Cyber Gomoku - 極致美學五子棋
 
 一個融合現代賽博霓虹美學、經典木質風、極簡雅緻風的五子棋網頁版遊戲。具備動態粒子特效、Web Audio API 合成物理碰撞聲、即時威脅提示，以及基於 Web Workers 多執行緒運算、支援 Zobrist Hashing 與置換表的 Minimax AI 演算法。
 

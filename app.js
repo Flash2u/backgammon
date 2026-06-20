@@ -375,7 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             // 建立背景 Worker，非同步運算 AI 走法
-            aiWorker = new Worker('ai_worker.js');
+            aiWorker = new Worker('ai_worker.js?v=1.2.0');
             
             aiWorker.onmessage = function(e) {
                 // 如果已經結束，或是已經非 AI 思考中（如點了重新開始/悔棋），忽略此訊息
@@ -423,10 +423,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateForbiddenMoves() {
         // 先清除所有 cell 的 forbidden 樣式
         const cells = boardEl.querySelectorAll('.cell');
-        cells.forEach(cell => cell.classList.remove('forbidden'));
+        if (cells) {
+            cells.forEach(cell => cell.classList.remove('forbidden'));
+        }
 
-        // 只有在禁手規則開啟、遊戲未結束且當前輪到黑棋 (1) 的時候，才計算禁手點
-        if (rulesMode !== 'renju' || isGameOver || currentTurn !== 1) {
+        // 只有在棋盤已初始化、禁手規則開啟、遊戲未結束且當前輪到黑棋 (1) 的時候，才計算禁手點
+        if (board.length === 0 || rulesMode !== 'renju' || isGameOver || currentTurn !== 1) {
             return;
         }
 
@@ -1149,6 +1151,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     btnModalClose.addEventListener('click', () => {
         winModal.classList.remove('active');
+    });
+
+    // About Modal 顯示與關閉
+    const btnAbout = document.getElementById('btn-about');
+    const aboutModal = document.getElementById('about-modal');
+    const btnAboutClose = document.getElementById('btn-about-close');
+
+    btnAbout.addEventListener('click', () => {
+        initAudio();
+        aboutModal.classList.add('active');
+    });
+
+    btnAboutClose.addEventListener('click', () => {
+        aboutModal.classList.remove('active');
+    });
+
+    aboutModal.addEventListener('click', (e) => {
+        if (e.target === aboutModal) {
+            aboutModal.classList.remove('active');
+        }
     });
 
     // 啟動初始化
