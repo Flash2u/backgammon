@@ -1855,13 +1855,31 @@ export const ui = {
     // ==========================================================================
     renderLobbyRooms(rooms, error = null) {
         if (!this.dom.lobbyRoomsList) return;
-        this.dom.lobbyRoomsList.innerHTML = '';
         
         if (error) {
-            this.dom.lobbyRoomsList.innerHTML = '<div style="text-align: center; padding: 12px; color: #ef4444; font-weight: 500;">⚠️ 大廳載入失敗 (請檢查網路或稍後重試)</div>';
+            this.dom.lobbyRoomsList.innerHTML = '';
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = 'text-align: center; padding: 12px; color: #ef4444; font-weight: 500; display: flex; flex-direction: column; align-items: center; gap: 8px;';
+            errorDiv.innerHTML = `
+                <span>⚠️ 大廳載入失敗 (連線中斷)</span>
+                <button id="btn-lobby-retry" class="lobby-room-btn" style="padding: 4px 12px; font-size: 0.8rem; background: var(--accent-primary); border-radius: 4px; border: none; color: white; cursor: pointer; transition: all 0.3s; box-shadow: 0 0 8px rgba(0, 242, 254, 0.3);">手動重連</button>
+            `;
+            this.dom.lobbyRoomsList.appendChild(errorDiv);
+            
+            const retryBtn = errorDiv.querySelector('#btn-lobby-retry');
+            if (retryBtn) {
+                retryBtn.addEventListener('click', () => {
+                    retryBtn.disabled = true;
+                    retryBtn.innerText = '連線中...';
+                    if (typeof p2p !== 'undefined' && p2p.resetLobbyRetry) {
+                        p2p.resetLobbyRetry();
+                    }
+                });
+            }
             return;
         }
         
+        this.dom.lobbyRoomsList.innerHTML = '';
         if (!rooms) rooms = [];
         
         // 過濾掉自己的 Peer ID

@@ -13,6 +13,8 @@ let spectatorConns = [];
 let lobbySocket = null;
 let lobbyRoomsMap = new Map();
 let lobbyCallback = null;
+let lobbyConnectFailCount = 0;
+
 
 let callbacks = {
     onStatusChange: (status, color) => {},
@@ -417,7 +419,7 @@ export const p2p = {
     },
 
     // ==========================================================================
-    // KVDB 公共大廳房間控制 + WebSockets 毫秒同步 (v2.0.0)
+    // WebSocket 公共大廳房間控制 + WebSockets 毫秒同步 (v2.0.0)
     // ==========================================================================
     initLobbySocket(onUpdate) {
         lobbyCallback = onUpdate;
@@ -425,13 +427,26 @@ export const p2p = {
             this.broadcastLobbyEvent({ type: 'request_room_list' });
             return;
         }
+        
+        if (lobbyConnectFailCount >= 3) {
+            console.warn("WebSocket Lobby connection failed repeatedly, auto-reconnect paused.");
+            if (lobbyCallback) {
+                lobbyCallback(null, new Error('Lobby connection paused'));
+            }
+            return;
+        }
+
         try {
             // 使用 socketsbay 的免費公用 WebSocket 測試信道
             lobbySocket = new WebSocket('wss://socketsbay.com/wss/v2/1/demo/');
             
             lobbySocket.onopen = () => {
                 console.log("WebSocket Lobby connected.");
+                lobbyConnectFailCount = 0;
                 this.broadcastLobbyEvent({ type: 'request_room_list' });
+                if (lobbyCallback) {
+                    lobbyCallback(Array.from(lobbyRoomsMap.values()), null);
+                }
             };
             
             lobbySocket.onmessage = (e) => {
@@ -471,14 +486,33 @@ export const p2p = {
             };
             
             lobbySocket.onerror = (err) => {
-                console.warn("WebSocket Lobby error, fallback to KVDB REST:", err);
+                console.warn("WebSocket Lobby connection error:", err);
+                lobbyConnectFailCount++;
+                if (lobbyCallback) {
+                    lobbyCallback(null, err);
+                }
             };
             
             lobbySocket.onclose = () => {
                 console.log("WebSocket Lobby disconnected.");
+                if (lobbyCallback && lobbyConnectFailCount > 0) {
+                    lobbyCallback(null, new Error('Disconnected'));
+                }
             };
         } catch (e) {
             console.warn("Failed to initialize WebSocket lobby:", e);
+            lobbyConnectFailCount++;
+            if (lobbyCallback) {
+                lobbyCallback(null, e);
+            }
+        }
+    },
+
+    resetLobbyRetry() {
+        console.log("Manual reset of Lobby connection retry count.");
+        lobbyConnectFailCount = 0;
+        if (lobbyCallback) {
+            this.initLobbySocket(lobbyCallback);
         }
     },
 
@@ -535,16 +569,23 @@ export const p2p = {
 
         // 如果 WebSocket lobby 還沒有建立連線，主動初始化它
         if (!lobbySocket || (lobbySocket.readyState !== WebSocket.OPEN && lobbySocket.readyState !== WebSocket.CONNECTING)) {
+            if (lobbyConnectFailCount >= 3) {
+                callback(null, new Error('Lobby connection paused due to multiple failures'));
+                return;
+            }
             this.initLobbySocket(callback);
+            return;
         }
 
         // 如果 WebSocket lobby 連接可用，優先回傳當前 Map 快照並請求更新
         if (lobbySocket && lobbySocket.readyState === WebSocket.OPEN) {
             this.broadcastLobbyEvent({ type: 'request_room_list' });
+            callback(Array.from(lobbyRoomsMap.values()), null);
+        } else if (lobbySocket && lobbySocket.readyState === WebSocket.CONNECTING) {
+            // 連線中，暫不做處理，等待 onopen 觸發 callback
+        } else {
+            callback(null, new Error('Lobby is offline'));
         }
-
-        // 即時將目前的房間快照回傳給 UI，達到零延遲體驗
-        callback(Array.from(lobbyRoomsMap.values()), null);
     },
 
     // ==========================================================================
