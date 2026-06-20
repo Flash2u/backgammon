@@ -1,4 +1,4 @@
-﻿import { state } from './game.js?t=1782015853000';
+﻿import { state } from './game.js?t=1782019800000';
 
 let peer = null;
 let p2pConn = null;
