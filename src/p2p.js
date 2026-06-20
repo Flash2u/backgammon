@@ -80,6 +80,7 @@ export const p2p = {
         });
 
         peer.on('disconnected', () => {
+            if (!peer || peer.destroyed) return;
             console.log('PeerJS disconnected from signaling server, attempting to reconnect...');
             callbacks.onStatusChange('🔌 信令伺服器中斷，重連中...', '#f59e0b');
             peer.reconnect();
@@ -144,7 +145,14 @@ export const p2p = {
             if (p2pConn && !p2pConn.open) {
                 console.warn("P2P connection establishment timeout. Likely WebRTC hole punching failed.");
                 callbacks.onToast('⚠️ 連線超時！雙方網路可能存在防火牆或 NAT 限制，導致 WebRTC 穿透失敗。', true);
-                this.close();
+                
+                // 僅關閉連線，不要銷毀 peer 實例
+                const tempConn = p2pConn;
+                p2pConn = null;
+                if (tempConn) {
+                    try { tempConn.close(); } catch(e) {}
+                }
+                this.handleClose();
             }
         }, 15000);
     },
@@ -276,6 +284,9 @@ export const p2p = {
         }
 
         const wasConnected = (p2pConn !== null);
+        
+        // 暫存斷線前的角色顏色，供決定狀態時使用
+        const prevColor = p2pMyColor;
         p2pConn = null;
 
         // 如果遊戲還在進行且屬於線上對戰，開啟 30 秒自動重連
@@ -328,8 +339,13 @@ export const p2p = {
                         state.p2pReconnecting = false;
                         state.isGameOver = true;
                         localStorage.removeItem('gomoku_p2p_autosave');
+                        const lastColor = p2pMyColor;
                         p2pMyColor = null;
-                        callbacks.onStatusChange('等待對手連線...', 'var(--accent-primary)');
+                        if (lastColor === 2 || lastColor === 0) {
+                            callbacks.onStatusChange('信令伺服器已連線 (準備就緒)', 'var(--accent-secondary)');
+                        } else {
+                            callbacks.onStatusChange('等待對手連線...', 'var(--accent-primary)');
+                        }
                         callbacks.onToast('⚠️ 對手已斷開連線，對局終止', true);
                         callbacks.onClose();
                     }
@@ -339,7 +355,11 @@ export const p2p = {
             }, 1000);
         } else if (!state.p2pReconnecting) {
             p2pMyColor = null;
-            callbacks.onStatusChange('等待對手連線...', 'var(--accent-primary)');
+            if (prevColor === 2 || prevColor === 0) {
+                callbacks.onStatusChange('信令伺服器已連線 (準備就緒)', 'var(--accent-secondary)');
+            } else {
+                callbacks.onStatusChange('等待對手連線...', 'var(--accent-primary)');
+            }
             callbacks.onClose();
         }
     },
@@ -379,11 +399,19 @@ export const p2p = {
         this.stopVoice();
         this.unregisterRoom();
 
-        if (lobbySocket) {
-            try { lobbySocket.close(); } catch(e) {}
-            lobbySocket = null;
+        // 只有當遊戲模式不再是 P2P 時，才真正釋放大廳 Socket
+        // 否則，保持大廳 Socket 的連線，以免每 5 秒大廳輪詢時重複連線
+        if (state.gameMode !== 'p2p') {
+            if (lobbySocket) {
+                try {
+                    lobbySocket.onerror = null;
+                    lobbySocket.onclose = null;
+                    lobbySocket.close();
+                } catch(e) {}
+                lobbySocket = null;
+            }
+            lobbyRoomsMap.clear();
         }
-        lobbyRoomsMap.clear();
 
         if (peer) {
             peer.destroy();
@@ -696,3 +724,4 @@ export const p2p = {
         }
     }
 };
+
