@@ -10,6 +10,7 @@ let reconnectInterval = null;
 let reconnectCountdownTimer = null;
 let connectTimeoutTimer = null;
 let spectatorConns = [];
+let p2pSuccessfullyConnected = false;
 
 let lobbySocket = null;
 let lobbyRoomsMap = new Map();
@@ -129,6 +130,7 @@ export const p2p = {
             return;
         }
         
+        p2pSuccessfullyConnected = false;
         callbacks.onStatusChange('連線對手中...', 'var(--text-secondary)');
         p2pMyColor = 2; // 客方白棋後手
         
@@ -169,6 +171,7 @@ export const p2p = {
         oppId = conn.peer;
 
         const onConnOpen = () => {
+            p2pSuccessfullyConnected = true;
             // 清除連線超時計時器
             if (connectTimeoutTimer) {
                 clearTimeout(connectTimeoutTimer);
@@ -284,13 +287,15 @@ export const p2p = {
         }
 
         const wasConnected = (p2pConn !== null);
+        const wasConnectedSuccessfully = p2pSuccessfullyConnected;
+        p2pSuccessfullyConnected = false;
         
         // 暫存斷線前的角色顏色，供決定狀態時使用
         const prevColor = p2pMyColor;
         p2pConn = null;
 
-        // 如果遊戲還在進行且屬於線上對戰，開啟 30 秒自動重連
-        if (wasConnected && state.gameMode === 'p2p' && !state.isGameOver && !state.p2pReconnecting) {
+        // 只有在曾經成功連線過、且遊戲仍在進行時，才開啟 30 秒自動重連
+        if (wasConnectedSuccessfully && wasConnected && state.gameMode === 'p2p' && !state.isGameOver && !state.p2pReconnecting) {
             state.p2pReconnecting = true;
 
             // 儲存目前狀態至 LocalStorage
@@ -360,11 +365,15 @@ export const p2p = {
             } else {
                 callbacks.onStatusChange('等待對手連線...', 'var(--accent-primary)');
             }
-            callbacks.onClose();
+            // 只有在曾經成功連線的情況下，才回調 onClose，避免未連線成功被誤判為斷線
+            if (wasConnectedSuccessfully) {
+                callbacks.onClose();
+            }
         }
     },
 
     close() {
+        p2pSuccessfullyConnected = false;
         if (connectTimeoutTimer) {
             clearTimeout(connectTimeoutTimer);
             connectTimeoutTimer = null;
@@ -724,4 +733,5 @@ export const p2p = {
         }
     }
 };
+
 
