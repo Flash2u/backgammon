@@ -198,37 +198,38 @@ export const game = {
     },
 
     createsLiveFour(r, c, color) {
+        // 模擬在 (r, c) 落子
         state.board[r][c] = color;
-        let isLive4 = false;
+        let formsFour = false;
+        
+        // 掃描方向
         const dirs = [
             [0, 1], [1, 0], [1, 1], [1, -1]
         ];
+        
+        // 檢查在 (r, c) 落子後，是否會使同方向其他空格變成可以直接「成五」的點
+        // 若能形成，即代表此落子能創造出「活四」或「衝四」威脅，需發出警告提示
         for (let d = 0; d < dirs.length; d++) {
             const [dr, dc] = dirs[d];
-            let startR = r, startC = c;
-            while (startR - dr >= 0 && startR - dr < BOARD_SIZE && startC - dc >= 0 && startC - dc < BOARD_SIZE && state.board[startR - dr][startC - dc] === color) {
-                startR -= dr;
-                startC -= dc;
-            }
-            let endR = r, endC = c;
-            while (endR + dr >= 0 && endR + dr < BOARD_SIZE && endC + dc >= 0 && endC + dc < BOARD_SIZE && state.board[endR + dr][endC + dc] === color) {
-                endR += dr;
-                endC += dc;
-            }
-            let count = dr !== 0 ? (Math.abs(endR - startR) / dr + 1) : (Math.abs(endC - startC) / dc + 1);
-            if (count === 4) {
-                const beforeR = startR - dr, beforeC = startC - dc;
-                const afterR = endR + dr, afterC = endC + dc;
-                const beforeEmpty = beforeR >= 0 && beforeR < BOARD_SIZE && beforeC >= 0 && beforeC < BOARD_SIZE && state.board[beforeR][beforeC] === 0;
-                const afterEmpty = afterR >= 0 && afterR < BOARD_SIZE && afterC >= 0 && afterC < BOARD_SIZE && state.board[afterR][afterC] === 0;
-                if (beforeEmpty && afterEmpty) {
-                    isLive4 = true;
-                    break;
+            for (let step = -4; step <= 4; step++) {
+                if (step === 0) continue;
+                const nr = r + step * dr;
+                const nc = c + step * dc;
+                if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE) {
+                    if (state.board[nr][nc] === 0) {
+                        if (this.completesFive(nr, nc, color)) {
+                            formsFour = true;
+                            break;
+                        }
+                    }
                 }
             }
+            if (formsFour) break;
         }
+        
+        // 還原棋盤
         state.board[r][c] = 0;
-        return isLive4;
+        return formsFour;
     },
 
     // 威脅掃描
