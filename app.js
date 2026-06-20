@@ -26,6 +26,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let rulesMode = 'standard'; // 'standard' (標準) 或 'renju' (禁手)
     let aiWorker = null;        // Web Worker 實例
 
+    // P2P 線上對戰狀態變數
+    let peer = null;            // PeerJS 實例
+    let p2pConn = null;         // Connection 實例
+    let p2pMyColor = null;      // 線上對戰我方顏色 (1: 黑, 2: 白)
+
     // 對戰戰績統計
     let stats = {
         aiWins: 0,
@@ -62,6 +67,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalMessage = document.getElementById('modal-message');
     const btnModalRestart = document.getElementById('btn-modal-restart');
     const btnModalClose = document.getElementById('btn-modal-close');
+
+    // P2P 連線選取器
+    const p2pCard = document.getElementById('p2p-card');
+    const p2pMyIdEl = document.getElementById('p2p-my-id');
+    const p2pStatusEl = document.getElementById('p2p-status');
+    const btnP2PInvite = document.getElementById('btn-p2p-invite');
+    const p2pPeerIdInput = document.getElementById('p2p-peer-id-input');
+    const btnP2PConnect = document.getElementById('btn-p2p-connect');
+
+    // P2P 確認 Modal
+    const p2pConfirmModal = document.getElementById('p2p-confirm-modal');
+    const p2pConfirmTitle = document.getElementById('p2p-confirm-title');
+    const p2pConfirmMessage = document.getElementById('p2p-confirm-message');
+    let btnP2PConfirmYes = document.getElementById('btn-p2p-confirm-yes');
+    let btnP2PConfirmNo = document.getElementById('btn-p2p-confirm-no');
 
     // ==========================================================================
     // 遊戲初始化
@@ -129,6 +149,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (gameMode === 'ai') {
             playerColor = nextGamePlayerColor;
             nextGamePlayerColor = 3 - nextGamePlayerColor; // 輪替下一次顏色 (1->2, 2->1)
+        } else if (gameMode === 'p2p') {
+            playerColor = p2pMyColor || 1; // P2P 模式下綁定個人執子顏色
         } else {
             playerColor = 1; // 雙人模式下預設玩家 1 執黑子
         }
@@ -153,6 +175,16 @@ document.addEventListener('DOMContentLoaded', () => {
         // 重新啟動計時
         startTimer();
 
+        // 如果是線上對戰且是房主，將重設狀態同步給客方
+        if (gameMode === 'p2p' && p2pMyColor === 1) {
+            sendP2PMessage({
+                type: 'init',
+                rulesMode: rulesMode,
+                board: board,
+                currentTurn: currentTurn
+            });
+        }
+
         // 如果是人機對戰模式且 AI 執黑子（先手），觸發 AI 自動落子
         if (gameMode === 'ai' && playerColor === 2) {
             triggerAIMove();
@@ -169,6 +201,18 @@ document.addEventListener('DOMContentLoaded', () => {
         // 人機對戰模式下，限制只能在玩家回合落子
         if (gameMode === 'ai' && currentTurn !== playerColor) return;
 
+        // 線上對戰模式下，限制只能在自己回合落子，且必須已連線
+        if (gameMode === 'p2p') {
+            if (!p2pConn || !p2pConn.open) {
+                showP2PToast('⚠️ 目前未與對手連線，無法落子', true);
+                return;
+            }
+            if (currentTurn !== playerColor) {
+                showP2PToast('⚠️ 請等待對手落子...', true);
+                return;
+            }
+        }
+
         // 禁手規則限制：如果當前是黑棋 (1) 且點擊位置為禁手點，禁止落子
         if (rulesMode === 'renju' && currentTurn === 1) {
             const forbiddenType = window.GomokuAI.checkForbidden(board, r, c, 1);
@@ -177,6 +221,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 showForbiddenToast(forbiddenType);
                 return;
             }
+        }
+
+        // 如果是線上對戰，落子時發送給對手
+        if (gameMode === 'p2p') {
+            sendP2PMessage({ type: 'move', r: r, c: c });
         }
 
         makeMove(r, c);
@@ -553,6 +602,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     msgText = `很遺憾，[${getDiffName(aiDifficulty)}] AI 贏得了本局。再接再厲！`;
                     stats.aiWins++;
                 }
+            } else if (gameMode === 'p2p') {
+                const isMe = (winner === playerColor);
+                const colorName = winner === 1 ? '黑棋' : '白棋';
+                if (isMe) {
+                    titleText = '🎉 恭喜獲勝！';
+                    msgText = `您執 ${colorName} 連成五子，贏得線上對決！`;
+                } else {
+                    titleText = '💀 棋差一招！';
+                    msgText = `對手執 ${colorName} 連成五子，贏得線上對決。再接再厲！`;
+                }
+                
+                if (winner === 1) stats.pvpP1Wins++;
+                else stats.pvpP2Wins++;
             } else {
                 const winnerName = winner === 1 ? '黑棋 (玩家1)' : '白棋 (玩家2)';
                 titleText = `${winnerName} 獲勝！`;
@@ -583,22 +645,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================================================
     // 悔棋與歷史管理
     // ==========================================================================
-    function undoMove() {
+    function executeUndo(stepsToUndo) {
         if (history.length === 0 || isGameOver || isAiThinking) return;
 
         // 播放悔棋音效
         playUndoSound();
 
-        let stepsToUndo = 1;
-        // 人機對戰模式下，按一次悔棋需要退兩步 (退 AI 與 玩家自己)
-        if (gameMode === 'ai' && history.length >= 2) {
-            stepsToUndo = 2;
-        }
-
         // 退回指定步數
         let targetState = null;
         for (let i = 0; i < stepsToUndo; i++) {
-            targetState = history.pop();
+            if (history.length > 0) {
+                targetState = history.pop();
+            }
         }
 
         if (targetState) {
@@ -625,18 +683,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     // 重新標記最後落子
                     if (lastMove && lastMove.r === r && lastMove.c === c) {
                         newStone.classList.add('last-move');
-                    }
+                      }
                     cell.appendChild(newStone);
                 }
             });
 
             updateTurnUI();
             updateThreatHints();
+            updateForbiddenMoves(); // 悔棋後重算黑棋禁手狀態
         }
 
         if (history.length === 0) {
             btnUndo.disabled = true;
         }
+    }
+
+    function undoMove() {
+        const steps = (gameMode === 'ai' && history.length >= 2) ? 2 : 1;
+        executeUndo(steps);
     }
 
     // ==========================================================================
@@ -1003,11 +1067,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // 依對戰模式顯示/隱藏 AI 難度設定
+        // 依對戰模式顯示/隱藏 AI 難度設定與 P2P 連線卡片
         if (mode === 'ai') {
             difficultyGroup.style.display = 'block';
+            p2pCard.style.display = 'none';
+        } else if (mode === 'p2p') {
+            difficultyGroup.style.display = 'none';
+            p2pCard.style.display = 'block';
+            initP2P(); // 初始化 P2P 線上連線
         } else {
             difficultyGroup.style.display = 'none';
+            p2pCard.style.display = 'none';
         }
 
         updateStatsUI();
@@ -1041,6 +1111,20 @@ document.addEventListener('DOMContentLoaded', () => {
      }
 
     function setRulesMode(mode) {
+        if (gameMode === 'p2p') {
+            if (p2pMyColor === 2) {
+                showP2PToast('🚫 只有房主可以更改規則設定', true);
+                setRulesModeUI(rulesMode); // 還原 UI 的 active 狀態
+                return;
+            }
+            // 房主修改規則，發送同步設定給客方
+            rulesMode = mode;
+            setRulesModeUI(mode);
+            sendP2PMessage({ type: 'sync-settings', rulesMode: mode });
+            updateForbiddenMoves();
+            return;
+        }
+
         rulesMode = mode;
         rulesButtons.forEach(btn => {
             if (btn.dataset.rules === mode) {
@@ -1064,15 +1148,326 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================================================
+    // 線上對戰 (P2P Multiplayer) 控制邏輯
+    // ==========================================================================
+    function setP2PStatus(status, color = '') {
+        if (!p2pStatusEl) return;
+        p2pStatusEl.innerText = status;
+        p2pStatusEl.style.color = color;
+    }
+
+    function showP2PToast(message, isAlert = false) {
+        statusTextEl.innerText = message;
+        statusTextEl.style.color = isAlert ? '#ef4444' : 'var(--accent-secondary)';
+        
+        if (window.p2pToastTimeout) {
+            clearTimeout(window.p2pToastTimeout);
+        }
+        
+        window.p2pToastTimeout = setTimeout(() => {
+            statusTextEl.style.color = '';
+            updateTurnUI();
+        }, 3000);
+    }
+
+    function initP2P() {
+        if (typeof Peer === 'undefined') {
+            setP2PStatus('❌ 無法載入 P2P 模組', '#ef4444');
+            showP2PToast('⚠️ P2P 庫載入失敗，無法使用連線對戰', true);
+            return;
+        }
+
+        if (peer && !peer.destroyed) {
+            if (p2pConn && p2pConn.open) {
+                setP2PStatus(`已連線 (對手: ${p2pConn.peer})`, 'var(--accent-secondary)');
+            } else {
+                setP2PStatus('等待對手連線...', 'var(--accent-primary)');
+            }
+            return;
+        }
+
+        setP2PStatus('連線信令伺服器中...');
+        peer = new Peer(null, {
+            debug: 1
+        });
+
+        peer.on('open', (id) => {
+            p2pMyIdEl.innerText = id;
+            setP2PStatus('等待對手連線...', 'var(--accent-primary)');
+
+            // 解析 URL 參數自動連線
+            const urlParams = new URLSearchParams(window.location.search);
+            const roomId = urlParams.get('room');
+            if (roomId && roomId !== id) {
+                // 清除 URL 的 room 參數，以防重新整理時重複連線
+                window.history.replaceState({}, document.title, window.location.pathname);
+                connectToPeer(roomId);
+            }
+        });
+
+        // 房主接收連線
+        peer.on('connection', (conn) => {
+            if (p2pConn && p2pConn.open) {
+                conn.close();
+                return;
+            }
+
+            p2pConn = conn;
+            p2pMyColor = 1; // 房主為先手黑棋
+
+            setupP2PConnection(conn);
+        });
+
+        peer.on('error', (err) => {
+            console.error('PeerJS error:', err);
+            if (err.type === 'peer-unavailable') {
+                setP2PStatus('❌ 找不到該連線 ID', '#ef4444');
+                showP2PToast('⚠️ 找不到該連線 ID，請確認是否輸入正確', true);
+            } else {
+                setP2PStatus(`❌ 連線出錯: ${err.type}`, '#ef4444');
+            }
+        });
+    }
+
+    function connectToPeer(targetId) {
+        if (!peer || peer.destroyed) {
+            showP2PToast('⚠️ P2P 尚未初始化完成，請稍後...', true);
+            return;
+        }
+        
+        setP2PStatus('連線對手中...', 'var(--text-secondary)');
+        p2pMyColor = 2; // 客方為白棋後手
+        
+        const conn = peer.connect(targetId);
+        p2pConn = conn;
+        
+        setupP2PConnection(conn);
+    }
+
+    function setupP2PConnection(conn) {
+        conn.on('open', () => {
+            setP2PStatus(`已連線 (對手: ${conn.peer})`, 'var(--accent-secondary)');
+            
+            // 房主連線成功後，初始化遊戲設定並同步給客方
+            if (p2pMyColor === 1) {
+                resetGame();
+                sendP2PMessage({
+                    type: 'init',
+                    rulesMode: rulesMode,
+                    board: board,
+                    currentTurn: currentTurn
+                });
+                showP2PToast('連線成功！由您 (黑棋) 先手落子');
+            } else {
+                showP2PToast('連線成功！等待房主 (黑棋) 開始並落子');
+            }
+        });
+
+        conn.on('data', (data) => {
+            handleP2PData(data);
+        });
+
+        conn.on('close', () => {
+            handleP2PClose();
+        });
+
+        conn.on('error', (err) => {
+            console.error('Connection error:', err);
+            handleP2PClose();
+        });
+    }
+
+    function sendP2PMessage(msg) {
+        if (p2pConn && p2pConn.open) {
+            p2pConn.send(msg);
+        }
+    }
+
+    function handleP2PData(data) {
+        switch (data.type) {
+            case 'init':
+                // 客方同步房主的初始設定
+                rulesMode = data.rulesMode;
+                setRulesModeUI(rulesMode);
+                board = data.board;
+                currentTurn = data.currentTurn;
+                lastMove = null;
+                history = [];
+                isGameOver = false;
+                
+                // 重新渲染棋盤
+                syncGameBoardUI();
+                updateTurnUI();
+                updateThreatHints();
+                updateForbiddenMoves();
+                startTimer();
+                break;
+
+            case 'move':
+                // 收到對手的落子
+                if (currentTurn !== p2pMyColor) {
+                    makeMove(data.r, data.c);
+                }
+                break;
+
+            case 'undo-request':
+                // 對手請求悔棋
+                showP2PConfirmModal(
+                    '悔棋請求',
+                    '對手請求悔棋，請問是否同意？',
+                    () => {
+                        sendP2PMessage({ type: 'undo-response', accept: true });
+                        const undoSteps = history.length >= 2 ? 2 : 1;
+                        executeUndo(undoSteps);
+                        showP2PToast('您同意了對手的悔棋請求');
+                    },
+                    () => {
+                        sendP2PMessage({ type: 'undo-response', accept: false });
+                        showP2PToast('您拒絕了對手的悔棋請求');
+                    }
+                );
+                break;
+
+            case 'undo-response':
+                if (data.accept) {
+                    const undoSteps = history.length >= 2 ? 2 : 1;
+                    executeUndo(undoSteps);
+                    showP2PToast('對手同意了您的悔棋請求');
+                } else {
+                    showP2PToast('❌ 對手拒絕了您的悔棋請求', true);
+                }
+                break;
+
+            case 'restart-request':
+                // 對手請求重新開始對局
+                showP2PConfirmModal(
+                    '對戰請求',
+                    '對手請求重新開始對局，請問是否同意？',
+                    () => {
+                        sendP2PMessage({ type: 'restart-response', accept: true });
+                        resetGame();
+                        showP2PToast('重新對局開始！');
+                    },
+                    () => {
+                        sendP2PMessage({ type: 'restart-response', accept: false });
+                        showP2PToast('您拒絕了重新對局的請求');
+                    }
+                );
+                break;
+
+            case 'restart-response':
+                if (data.accept) {
+                    resetGame();
+                    showP2PToast('對手同意重新開始，對局已重置');
+                } else {
+                    showP2PToast('❌ 對手拒絕了重新開始對局的請求', true);
+                }
+                break;
+
+            case 'sync-settings':
+                // 同步房主的規則設定
+                rulesMode = data.rulesMode;
+                setRulesModeUI(rulesMode);
+                updateForbiddenMoves();
+                showP2PToast(`房主已將規則變更為：${rulesMode === 'renju' ? '禁手規則' : '標準規則'}`);
+                break;
+        }
+    }
+
+    function handleP2PClose() {
+        p2pConn = null;
+        setP2PStatus('等待對手連線...', 'var(--accent-primary)');
+        showP2PToast('⚠️ 對手已斷開連線，對局終止', true);
+        isGameOver = true;
+        stopTimer();
+    }
+
+    function syncGameBoardUI() {
+        const cells = boardEl.querySelectorAll('.cell');
+        cells.forEach(cell => {
+            const r = parseInt(cell.dataset.row);
+            const c = parseInt(cell.dataset.col);
+            const color = board[r][c];
+
+            cell.classList.remove('has-stone');
+            const stone = cell.querySelector('.stone');
+            if (stone) stone.remove();
+
+            if (color !== 0) {
+                cell.classList.add('has-stone');
+                const newStone = document.createElement('div');
+                newStone.className = `stone ${color === 1 ? 'black' : 'white'}`;
+                cell.appendChild(newStone);
+            }
+        });
+    }
+
+    function setRulesModeUI(mode) {
+        rulesButtons.forEach(btn => {
+            if (btn.dataset.rules === mode) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+
+    function showP2PConfirmModal(title, message, onYes, onNo) {
+        p2pConfirmTitle.innerText = title;
+        p2pConfirmMessage.innerText = message;
+        
+        p2pConfirmModal.classList.add('active');
+        
+        // 複製按鈕以清除舊監聽
+        const newYes = btnP2PConfirmYes.cloneNode(true);
+        const newNo = btnP2PConfirmNo.cloneNode(true);
+        
+        btnP2PConfirmYes.parentNode.replaceChild(newYes, btnP2PConfirmYes);
+        btnP2PConfirmNo.parentNode.replaceChild(newNo, btnP2PConfirmNo);
+        
+        btnP2PConfirmYes = newYes;
+        btnP2PConfirmNo = newNo;
+        
+        btnP2PConfirmYes.addEventListener('click', () => {
+            p2pConfirmModal.classList.remove('active');
+            onYes();
+        });
+        
+        btnP2PConfirmNo.addEventListener('click', () => {
+            p2pConfirmModal.classList.remove('active');
+            onNo();
+        });
+    }
+
+    // ==========================================================================
     // 事件監聽
     // ==========================================================================
     btnStart.addEventListener('click', () => {
         initAudio(); // 確保使用者互動觸發 AudioContext
-        resetGame();
+        if (gameMode === 'p2p') {
+            if (p2pConn && p2pConn.open) {
+                sendP2PMessage({ type: 'restart-request' });
+                showP2PToast('已發送重新對局請求，等待對手同意...');
+            } else {
+                resetGame();
+            }
+        } else {
+            resetGame();
+        }
     });
 
     btnUndo.addEventListener('click', () => {
-        undoMove();
+        initAudio();
+        if (gameMode === 'p2p') {
+            if (p2pConn && p2pConn.open) {
+                sendP2PMessage({ type: 'undo-request' });
+                showP2PToast('已發送悔棋請求，等待對手同意...');
+            } else {
+                undoMove();
+            }
+        } else {
+            undoMove();
+        }
     });
 
     btnSound.addEventListener('click', () => {
@@ -1095,7 +1490,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const selectedMode = btn.dataset.mode;
             if (selectedMode !== gameMode) {
                 setGameMode(selectedMode);
-                resetGame();
+                if (selectedMode !== 'p2p') {
+                    resetGame();
+                }
             }
         });
     });
@@ -1173,6 +1570,52 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // P2P 邀請連結複製
+    btnP2PInvite.addEventListener('click', () => {
+        initAudio();
+        if (!peer || !peer.id) {
+            showP2PToast('⚠️ 正在取得連線 ID，請稍後...', true);
+            return;
+        }
+        
+        const inviteUrl = `${window.location.origin}${window.location.pathname}?room=${peer.id}`;
+        navigator.clipboard.writeText(inviteUrl).then(() => {
+            btnP2PInvite.innerText = '✅ 已複製連結！';
+            setTimeout(() => {
+                btnP2PInvite.innerText = '🔗 複製邀請連結';
+            }, 2000);
+        }).catch(err => {
+            console.error('Copy failed:', err);
+            showP2PToast('⚠️ 複製連結失敗，請手動複製 ID', true);
+        });
+    });
+
+    // P2P 手動連線
+    btnP2PConnect.addEventListener('click', () => {
+        initAudio();
+        const targetId = p2pPeerIdInput.value.trim();
+        if (!targetId) {
+            showP2PToast('⚠️ 請輸入好友的連線 ID', true);
+            return;
+        }
+        if (peer && targetId === peer.id) {
+            showP2PToast('⚠️ 不能與自己進行連線對戰', true);
+            return;
+        }
+        connectToPeer(targetId);
+    });
+
     // 啟動初始化
     initGame();
+
+    // 啟動後檢查是否有 URL 邀請房間參數，有的話自動轉為 P2P 模式
+    const checkUrlRoom = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomId = urlParams.get('room');
+        if (roomId) {
+            // 切換為 P2P 模式，會自動觸發 initP2P() 進行連線
+            setGameMode('p2p');
+        }
+    };
+    checkUrlRoom();
 });
