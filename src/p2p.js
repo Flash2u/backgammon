@@ -578,7 +578,8 @@ export const p2p = {
             
             lobbySocket.onclose = () => {
                 console.log("WebSocket Lobby disconnected.");
-                if (lobbyCallback && lobbyConnectFailCount > 0) {
+                lobbyConnectFailCount++; // 累加失敗次數，防止無限輪詢重連
+                if (lobbyCallback) {
                     lobbyCallback(null, new Error('Disconnected'));
                 }
             };
@@ -745,6 +746,7 @@ export const p2p = {
         }
     }
 };
+
 
 
 
