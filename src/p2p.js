@@ -1,4 +1,4 @@
-﻿import { state } from './game.js?t=1782020700000';
+﻿import { state } from './game.js?t=1782020700005';
 
 let peer = null;
 let p2pConn = null;
@@ -33,7 +33,7 @@ let callbacks = {
 export const p2p = {
     init(cbs) {
         callbacks = { ...callbacks, ...cbs };
-        console.log("🚀 [P2P] 模組初始化成功。版本：2.0.4 (純 STUN 穩定版)");
+        console.log("🚀 [P2P] 模組初始化成功。版本：2.0.5 (方案 A 直連/TURN版)");
 
         if (typeof Peer === 'undefined') {
             callbacks.onStatusChange('❌ 無法載入 P2P 模組', '#ef4444');
@@ -69,7 +69,18 @@ export const p2p = {
                     { urls: 'stun:stun.ekiga.net' },
                     { urls: 'stun:stun.ideasip.com' },
                     { urls: 'stun:stun.schlund.de' },
-                    { urls: 'stun:stun.stunprotocol.org:3478' }
+                    { urls: 'stun:stun.stunprotocol.org:3478' },
+                    // 免費公開 TURN 伺服器，解決對稱型 NAT 連線失敗問題
+                    {
+                        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+                        username: 'openrelayproject',
+                        credential: 'openrelayproject'
+                    },
+                    {
+                        urls: 'turn:openrelay.metered.ca:3478',
+                        username: 'openrelayproject',
+                        credential: 'openrelayproject'
+                    }
                 ]
             }
         });
@@ -450,230 +461,36 @@ export const p2p = {
         return peer ? peer.id : null;
     },
 
-    // 廣播給對手與所有旁觀者 (v2.0.0)
-    broadcast(msg) {
-        this.sendMessage(msg);
-        if (spectatorConns && spectatorConns.length > 0) {
-            spectatorConns.forEach(conn => {
-                if (conn && conn.open) {
-                    conn.send(msg);
-                }
-            });
-        }
-    },
-
-    // 設置旁觀者連線 (v2.0.0)
-    setupSpectatorConnection(conn) {
-        conn.on('open', () => {
-            console.log("Spectator connection established:", conn.peer);
-            callbacks.onToast("👁️ 新的旁觀者加入觀戰");
-            if (callbacks.onSpectatorConnected) {
-                callbacks.onSpectatorConnected(conn);
-            }
-        });
-
-        conn.on('data', (data) => {
-            // 旁觀者發言
-            callbacks.onData({
-                ...data,
-                fromSpectator: true,
-                senderId: conn.peer
-            });
-        });
-
-        conn.on('close', () => {
-            console.log("Spectator connection closed:", conn.peer);
-            spectatorConns = spectatorConns.filter(c => c.peer !== conn.peer);
-        });
-
-        conn.on('error', (err) => {
-            console.error("Spectator connection error:", err);
-            conn.close();
-        });
-    },
-
-    // ==========================================================================
-    // WebSocket 公共大廳房間控制 + WebSockets 毫秒同步 (v2.0.0)
-    // ==========================================================================
     initLobbySocket(onUpdate) {
         lobbyCallback = onUpdate;
-        if (lobbySocket && (lobbySocket.readyState === WebSocket.OPEN || lobbySocket.readyState === WebSocket.CONNECTING)) {
-            this.broadcastLobbyEvent({ type: 'request_room_list' });
-            return;
-        }
-        
-        // 確保先完全清理舊的 lobbySocket，避免其事件殘留或延遲觸發
-        if (lobbySocket) {
-            try {
-                lobbySocket.onopen = null;
-                lobbySocket.onmessage = null;
-                lobbySocket.onerror = null;
-                lobbySocket.onclose = null;
-                lobbySocket.close();
-            } catch (e) {}
-            lobbySocket = null;
-        }
-        
-        if (lobbyConnectFailCount >= 3) {
-            console.warn("WebSocket Lobby connection failed repeatedly, auto-reconnect paused.");
-            if (lobbyCallback) {
-                lobbyCallback(null, new Error('Lobby connection paused'));
-            }
-            return;
-        }
-
-        try {
-            // 使用 socketsbay 的免費公用 WebSocket 測試信道
-            lobbySocket = new WebSocket('wss://socketsbay.com/wss/v2/1/demo/');
-            
-            lobbySocket.onopen = () => {
-                console.log("WebSocket Lobby connected.");
-                lobbyConnectFailCount = 0;
-                this.broadcastLobbyEvent({ type: 'request_room_list' });
-                if (lobbyCallback) {
-                    lobbyCallback(Array.from(lobbyRoomsMap.values()), null);
-                }
-            };
-            
-            lobbySocket.onmessage = (e) => {
-                try {
-                    const data = JSON.parse(e.data);
-                    if (data.project !== 'cyber_gomoku_lobby') return;
-                    
-                    if (data.type === 'request_room_list') {
-                        // 如果自己是房主，將當前註冊的房間廣播出去
-                        const saved = localStorage.getItem('gomoku_registered_room');
-                        if (saved && peer && peer.id) {
-                            const roomObj = JSON.parse(saved);
-                            if (roomObj.id === peer.id) {
-                                this.broadcastLobbyEvent({
-                                    type: 'room_created',
-                                    room: roomObj
-                                });
-                            }
-                        }
-                    } else if (data.type === 'room_created') {
-                        // 收到新房間廣播，存入本地 Map
-                        lobbyRoomsMap.set(data.room.id, data.room);
-                        if (lobbyCallback) {
-                            lobbyCallback(Array.from(lobbyRoomsMap.values()), null);
-                        }
-                    } else if (data.type === 'room_closed') {
-                        // 移除已關閉房間
-                        if (lobbyRoomsMap.delete(data.id)) {
-                            if (lobbyCallback) {
-                                lobbyCallback(Array.from(lobbyRoomsMap.values()), null);
-                            }
-                        }
-                    }
-                } catch (err) {
-                    // 忽略 JSON 解析異常
-                }
-            };
-            
-            lobbySocket.onerror = (err) => {
-                console.warn("WebSocket Lobby connection error:", err);
-                lobbyConnectFailCount++;
-                if (lobbyCallback) {
-                    lobbyCallback(null, err);
-                }
-            };
-            
-            lobbySocket.onclose = () => {
-                console.log("WebSocket Lobby disconnected.");
-                lobbyConnectFailCount++; // 累加失敗次數，防止無限輪詢重連
-                if (lobbyCallback) {
-                    lobbyCallback(null, new Error('Disconnected'));
-                }
-            };
-        } catch (e) {
-            console.warn("Failed to initialize WebSocket lobby:", e);
-            lobbyConnectFailCount++;
-            if (lobbyCallback) {
-                lobbyCallback(null, e);
-            }
+        console.log("WebSocket Lobby is disabled in v2.0.5");
+        if (lobbyCallback) {
+            lobbyCallback([], null);
         }
     },
 
     resetLobbyRetry() {
-        console.log("Manual reset of Lobby connection retry count.");
-        lobbyConnectFailCount = 0;
-        if (lobbyCallback) {
-            this.initLobbySocket(lobbyCallback);
-        }
+        // 大廳重試已停用
     },
 
     broadcastLobbyEvent(msg) {
-        if (lobbySocket && lobbySocket.readyState === WebSocket.OPEN) {
-            try {
-                lobbySocket.send(JSON.stringify({
-                    project: 'cyber_gomoku_lobby',
-                    ...msg
-                }));
-            } catch (e) {
-                console.warn("Failed to send WebSocket lobby event:", e);
-            }
-        }
+        // 大廳廣播已停用
     },
 
     async registerRoom(roomName, rulesMode) {
         if (!peer || !peer.id) return;
         isRoomHost = true;
-        const roomData = {
-            id: peer.id,
-            name: roomName || `房間_${peer.id.slice(0, 4)}`,
-            rulesMode: rulesMode || 'standard',
-            timestamp: Date.now()
-        };
-        // 本地暫存，以便其他 client request 時隨時重發
-        localStorage.setItem('gomoku_registered_room', JSON.stringify(roomData));
-
-        // WebSocket 廣播事件
-        if (!lobbySocket || lobbySocket.readyState !== WebSocket.OPEN) {
-            this.initLobbySocket(lobbyCallback);
-        }
-        setTimeout(() => {
-            this.broadcastLobbyEvent({
-                type: 'room_created',
-                room: roomData
-            });
-        }, 600);
     },
 
     async unregisterRoom() {
         if (!peer || !peer.id) return;
         isRoomHost = false;
-        localStorage.removeItem('gomoku_registered_room');
-
-        // WebSocket 廣播關閉事件
-        this.broadcastLobbyEvent({
-            type: 'room_closed',
-            id: peer.id
-        });
     },
 
     async fetchRooms(callback) {
-        // 保存 callback 以便 WebSocket 收到資料時回調
         lobbyCallback = callback;
-
-        // 如果 WebSocket lobby 還沒有建立連線，主動初始化它
-        if (!lobbySocket || (lobbySocket.readyState !== WebSocket.OPEN && lobbySocket.readyState !== WebSocket.CONNECTING)) {
-            if (lobbyConnectFailCount >= 3) {
-                callback(null, new Error('Lobby connection paused due to multiple failures'));
-                return;
-            }
-            this.initLobbySocket(callback);
-            return;
-        }
-
-        // 如果 WebSocket lobby 連接可用，優先回傳當前 Map 快照並請求更新
-        if (lobbySocket && lobbySocket.readyState === WebSocket.OPEN) {
-            this.broadcastLobbyEvent({ type: 'request_room_list' });
-            callback(Array.from(lobbyRoomsMap.values()), null);
-        } else if (lobbySocket && lobbySocket.readyState === WebSocket.CONNECTING) {
-            // 連線中，暫不做處理，等待 onopen 觸發 callback
-        } else {
-            callback(null, new Error('Lobby is offline'));
+        if (callback) {
+            callback([], null);
         }
     },
 

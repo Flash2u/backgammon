@@ -1,5 +1,5 @@
-﻿import { BOARD_SIZE, game } from './game.js?t=1782020700000';
-import { PUZZLES, getPuzzleProgress, completePuzzle } from './puzzle.js?t=1782020700000';
+﻿import { BOARD_SIZE, game } from './game.js?t=1782020700005';
+import { PUZZLES, getPuzzleProgress, completePuzzle } from './puzzle.js?t=1782020700005';
 
 // ==========================================================================
 // GomokuDB: IndexedDB 本地數據庫 (棋譜 & 自訂關卡)
@@ -1867,62 +1867,7 @@ export const ui = {
     // ==========================================================================
     renderLobbyRooms(rooms, error = null) {
         if (!this.dom.lobbyRoomsList) return;
-        
-        if (error) {
-            this.dom.lobbyRoomsList.innerHTML = '';
-            const errorDiv = document.createElement('div');
-            errorDiv.style.cssText = 'text-align: center; padding: 16px 12px; color: var(--text-muted); font-size: 0.85rem; font-weight: 400; display: flex; flex-direction: column; align-items: center; gap: 10px; line-height: 1.5;';
-            errorDiv.innerHTML = `
-                <span>📢 公共大廳已離線。您可以複製上方邀請連結發送給好友，或手動輸入對手 ID 連線對戰。</span>
-                <button id="btn-lobby-retry" class="lobby-room-btn" style="padding: 6px 16px; font-size: 0.8rem; background: var(--accent-primary); border-radius: 4px; border: none; color: white; cursor: pointer; transition: all 0.3s; box-shadow: 0 0 8px rgba(0, 242, 254, 0.3);">手動重連大廳</button>
-            `;
-            this.dom.lobbyRoomsList.appendChild(errorDiv);
-            
-            const retryBtn = errorDiv.querySelector('#btn-lobby-retry');
-            if (retryBtn) {
-                retryBtn.addEventListener('click', () => {
-                    retryBtn.disabled = true;
-                    retryBtn.innerText = '連線中...';
-                    if (window.p2p && window.p2p.resetLobbyRetry) {
-                        window.p2p.resetLobbyRetry();
-                    }
-                });
-            }
-            return;
-        }
-        
         this.dom.lobbyRoomsList.innerHTML = '';
-        if (!rooms) rooms = [];
-        
-        // 過濾掉自己的 Peer ID
-        const myId = this.dom.p2pMyId ? this.dom.p2pMyId.innerText : '---';
-        const availableRooms = rooms.filter(room => room.id !== myId);
-        
-        if (availableRooms.length === 0) {
-            this.dom.lobbyRoomsList.innerHTML = '<div style="text-align: center; padding: 12px; color: var(--text-muted);">目前無等待中的公開房間</div>';
-            return;
-        }
-        
-        availableRooms.forEach(room => {
-            const item = document.createElement('div');
-            item.className = 'lobby-room-item';
-            
-            const info = document.createElement('div');
-            info.className = 'lobby-room-info';
-            info.innerHTML = `<span class="lobby-room-name" style="font-weight:600; color:var(--text-primary);">${room.name}</span><span style="font-size: 0.75rem; color: var(--text-muted); margin-left: 6px;">(${room.rulesMode === 'renju' ? '禁手' : '標準'})</span>`;
-            
-            const btn = document.createElement('button');
-            btn.className = 'lobby-room-btn';
-            btn.innerText = '一鍵配對';
-            
-            btn.addEventListener('click', () => {
-                this.handlers.onP2PConnectClick(room.id);
-            });
-            
-            item.appendChild(info);
-            item.appendChild(btn);
-            this.dom.lobbyRoomsList.appendChild(item);
-        });
     },
 
     downloadSGF() {
