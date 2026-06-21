@@ -1510,7 +1510,7 @@ export const ui = {
                 }
             } else {
                 // 如果目前是客方且正在嘗試連線中，顯示「連線房主中，請稍後...」
-                const isConnecting = (typeof p2p !== 'undefined' && p2p.getMyColor() === 2);
+                const isConnecting = (window.p2p && window.p2p.getMyColor() === 2);
                 if (isConnecting) {
                     this.dom.statusText.innerText = '連線房主中，請稍後...';
                     this.dom.statusText.style.color = 'var(--text-secondary)';
@@ -1878,8 +1878,8 @@ export const ui = {
                 retryBtn.addEventListener('click', () => {
                     retryBtn.disabled = true;
                     retryBtn.innerText = '連線中...';
-                    if (typeof p2p !== 'undefined' && p2p.resetLobbyRetry) {
-                        p2p.resetLobbyRetry();
+                    if (window.p2p && window.p2p.resetLobbyRetry) {
+                        window.p2p.resetLobbyRetry();
                     }
                 });
             }
@@ -2453,6 +2453,7 @@ export const ui = {
         this.renderPuzzleLevels();
     }
 };
+
 
 
 
