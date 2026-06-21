@@ -1511,12 +1511,17 @@ export const ui = {
             } else {
                 // 如果目前是客方且正在嘗試連線中，顯示「連線房主中，請稍後...」
                 const isConnecting = (window.p2p && window.p2p.getMyColor() === 2);
+                const isHost = (window.p2p && window.p2p.isHost && window.p2p.isHost());
+                
                 if (isConnecting) {
                     this.dom.statusText.innerText = '連線房主中，請稍後...';
                     this.dom.statusText.style.color = 'var(--text-secondary)';
-                } else {
+                } else if (isHost) {
                     this.dom.statusText.innerText = '等待對手連線...';
                     this.dom.statusText.style.color = 'var(--accent-primary)';
+                } else {
+                    this.dom.statusText.innerText = '請在大廳加入或建立房間...';
+                    this.dom.statusText.style.color = 'var(--text-muted)';
                 }
             }
         } else {
@@ -2453,6 +2458,7 @@ export const ui = {
         this.renderPuzzleLevels();
     }
 };
+
 
 
 

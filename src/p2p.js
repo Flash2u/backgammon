@@ -11,6 +11,7 @@ let reconnectCountdownTimer = null;
 let connectTimeoutTimer = null;
 let spectatorConns = [];
 let p2pSuccessfullyConnected = false;
+let isRoomHost = false;
 
 let lobbySocket = null;
 let lobbyRoomsMap = new Map();
@@ -131,6 +132,7 @@ export const p2p = {
         }
         
         p2pSuccessfullyConnected = false;
+        isRoomHost = false;
         callbacks.onStatusChange('連線對手中...', 'var(--text-secondary)');
         p2pMyColor = 2; // 客方白棋後手
         
@@ -374,6 +376,7 @@ export const p2p = {
 
     close() {
         p2pSuccessfullyConnected = false;
+        isRoomHost = false;
         if (connectTimeoutTimer) {
             clearTimeout(connectTimeoutTimer);
             connectTimeoutTimer = null;
@@ -615,6 +618,7 @@ export const p2p = {
 
     async registerRoom(roomName, rulesMode) {
         if (!peer || !peer.id) return;
+        isRoomHost = true;
         const roomData = {
             id: peer.id,
             name: roomName || `房間_${peer.id.slice(0, 4)}`,
@@ -638,6 +642,7 @@ export const p2p = {
 
     async unregisterRoom() {
         if (!peer || !peer.id) return;
+        isRoomHost = false;
         localStorage.removeItem('gomoku_registered_room');
 
         // WebSocket 廣播關閉事件
@@ -744,8 +749,13 @@ export const p2p = {
             this.localStream.getTracks().forEach(track => track.stop());
             this.localStream = null;
         }
+    },
+
+    isHost() {
+        return isRoomHost;
     }
 };
+
 
 
 
