@@ -1,5 +1,5 @@
-﻿import { BOARD_SIZE, game } from './game.js?t=1782020700005';
-import { PUZZLES, getPuzzleProgress, completePuzzle } from './puzzle.js?t=1782020700005';
+﻿import { BOARD_SIZE, game } from './game.js?t=1782020700006';
+import { PUZZLES, getPuzzleProgress, completePuzzle } from './puzzle.js?t=1782020700006';
 
 // ==========================================================================
 // GomokuDB: IndexedDB 本地數據庫 (棋譜 & 自訂關卡)
@@ -1520,7 +1520,7 @@ export const ui = {
                     this.dom.statusText.innerText = '等待對手連線...';
                     this.dom.statusText.style.color = 'var(--accent-primary)';
                 } else {
-                    this.dom.statusText.innerText = '請在大廳加入或建立房間...';
+                    this.dom.statusText.innerText = '請複製邀請連結給好友，或手動輸入對手 ID 連線對戰...';
                     this.dom.statusText.style.color = 'var(--text-muted)';
                 }
             }

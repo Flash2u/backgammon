@@ -1,12 +1,12 @@
-﻿import { game, state } from './src/game.js?t=1782020700005';
-import { ui } from './src/ui.js?t=1782020700005';
-import { audio } from './src/audio.js?t=1782020700005';
-import { p2p } from './src/p2p.js?t=1782020700005';
+﻿import { game, state } from './src/game.js?t=1782020700006';
+import { ui } from './src/ui.js?t=1782020700006';
+import { audio } from './src/audio.js?t=1782020700006';
+import { p2p } from './src/p2p.js?t=1782020700006';
 
 
 
 function startApp() {
-    console.log("🚀 [App] 應用程式初始化成功。版本：2.0.5");
+    console.log("🚀 [App] 應用程式初始化成功。版本：2.0.6");
     let isUndoing = false;
     let gameSeconds = 0;
     let timerInterval = null;
@@ -824,6 +824,8 @@ function startApp() {
                     ui.showP2PToast('⚠️ 不能與自己進行連線對戰', true);
                     return;
                 }
+                state.gameMode = 'p2p';
+                ui.updateSettingButtons('gameMode', 'p2p');
                 p2p.connect(peerId);
             },
             onSendChat: (text) => {
