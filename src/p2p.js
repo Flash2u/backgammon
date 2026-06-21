@@ -520,8 +520,8 @@ export const p2p = {
         }
 
         try {
-            // 改用 PieSocket 的免費高穩定自訂 Channel 通道，避免與全球 demo 通道擁堵而斷線
-            lobbySocket = new WebSocket('wss://demo.piesocket.com/v3/cyber_gomoku_lobby_exclusive_chan?api_key=VCXCEJZvOyM656QC1o7zK99mA4Z277Fei2vT0PQC');
+            // 使用 socketsbay 的免費公用 WebSocket 測試信道
+            lobbySocket = new WebSocket('wss://socketsbay.com/wss/v2/1/demo/');
             
             lobbySocket.onopen = () => {
                 console.log("WebSocket Lobby connected.");
@@ -745,6 +745,7 @@ export const p2p = {
         }
     }
 };
+
 
 
 

@@ -1866,10 +1866,10 @@ export const ui = {
         if (error) {
             this.dom.lobbyRoomsList.innerHTML = '';
             const errorDiv = document.createElement('div');
-            errorDiv.style.cssText = 'text-align: center; padding: 12px; color: #ef4444; font-weight: 500; display: flex; flex-direction: column; align-items: center; gap: 8px;';
+            errorDiv.style.cssText = 'text-align: center; padding: 16px 12px; color: var(--text-muted); font-size: 0.85rem; font-weight: 400; display: flex; flex-direction: column; align-items: center; gap: 10px; line-height: 1.5;';
             errorDiv.innerHTML = `
-                <span>⚠️ 大廳載入失敗 (連線中斷)</span>
-                <button id="btn-lobby-retry" class="lobby-room-btn" style="padding: 4px 12px; font-size: 0.8rem; background: var(--accent-primary); border-radius: 4px; border: none; color: white; cursor: pointer; transition: all 0.3s; box-shadow: 0 0 8px rgba(0, 242, 254, 0.3);">手動重連</button>
+                <span>📢 公共大廳已離線。您可以複製上方邀請連結發送給好友，或手動輸入對手 ID 連線對戰。</span>
+                <button id="btn-lobby-retry" class="lobby-room-btn" style="padding: 6px 16px; font-size: 0.8rem; background: var(--accent-primary); border-radius: 4px; border: none; color: white; cursor: pointer; transition: all 0.3s; box-shadow: 0 0 8px rgba(0, 242, 254, 0.3);">手動重連大廳</button>
             `;
             this.dom.lobbyRoomsList.appendChild(errorDiv);
             
@@ -2453,6 +2453,7 @@ export const ui = {
         this.renderPuzzleLevels();
     }
 };
+
 
 
 
