@@ -499,6 +499,18 @@ export const p2p = {
             return;
         }
         
+        // 確保先完全清理舊的 lobbySocket，避免其事件殘留或延遲觸發
+        if (lobbySocket) {
+            try {
+                lobbySocket.onopen = null;
+                lobbySocket.onmessage = null;
+                lobbySocket.onerror = null;
+                lobbySocket.onclose = null;
+                lobbySocket.close();
+            } catch (e) {}
+            lobbySocket = null;
+        }
+        
         if (lobbyConnectFailCount >= 3) {
             console.warn("WebSocket Lobby connection failed repeatedly, auto-reconnect paused.");
             if (lobbyCallback) {
@@ -508,8 +520,8 @@ export const p2p = {
         }
 
         try {
-            // 使用 socketsbay 的免費公用 WebSocket 測試信道
-            lobbySocket = new WebSocket('wss://socketsbay.com/wss/v2/1/demo/');
+            // 改用 PieSocket 的免費高穩定自訂 Channel 通道，避免與全球 demo 通道擁堵而斷線
+            lobbySocket = new WebSocket('wss://demo.piesocket.com/v3/cyber_gomoku_lobby_exclusive_chan?api_key=VCXCEJZvOyM656QC1o7zK99mA4Z277Fei2vT0PQC');
             
             lobbySocket.onopen = () => {
                 console.log("WebSocket Lobby connected.");
@@ -733,5 +745,6 @@ export const p2p = {
         }
     }
 };
+
 
 

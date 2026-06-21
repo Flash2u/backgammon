@@ -1509,8 +1509,15 @@ export const ui = {
                     this.dom.statusText.style.color = 'var(--text-secondary)';
                 }
             } else {
-                this.dom.statusText.innerText = '等待對手連線...';
-                this.dom.statusText.style.color = 'var(--accent-primary)';
+                // 如果目前是客方且正在嘗試連線中，顯示「連線房主中，請稍後...」
+                const isConnecting = (typeof p2p !== 'undefined' && p2p.getMyColor() === 2);
+                if (isConnecting) {
+                    this.dom.statusText.innerText = '連線房主中，請稍後...';
+                    this.dom.statusText.style.color = 'var(--text-secondary)';
+                } else {
+                    this.dom.statusText.innerText = '等待對手連線...';
+                    this.dom.statusText.style.color = 'var(--accent-primary)';
+                }
             }
         } else {
             if (this.state.gameMode === 'ai') {
@@ -2446,5 +2453,6 @@ export const ui = {
         this.renderPuzzleLevels();
     }
 };
+
 
 
