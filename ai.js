@@ -58,25 +58,37 @@
         // 水平
         for (let r = 0; r < BOARD_SIZE; r++) {
             for (let c = 0; c <= BOARD_SIZE - 5; c++) {
-                SEGMENTS.push([[r, c], [r, c+1], [r, c+2], [r, c+3], [r, c+4]]);
+                const seg = [[r, c], [r, c+1], [r, c+2], [r, c+3], [r, c+4]];
+                seg.left = [r, c - 1];
+                seg.right = [r, c + 5];
+                SEGMENTS.push(seg);
             }
         }
         // 垂直
         for (let c = 0; c < BOARD_SIZE; c++) {
             for (let r = 0; r <= BOARD_SIZE - 5; r++) {
-                SEGMENTS.push([[r, c], [r+1, c], [r+2, c], [r+3, c], [r+4, c]]);
+                const seg = [[r, c], [r+1, c], [r+2, c], [r+3, c], [r+4, c]];
+                seg.left = [r - 1, c];
+                seg.right = [r + 5, c];
+                SEGMENTS.push(seg);
             }
         }
         // 斜下 (\)
         for (let r = 0; r <= BOARD_SIZE - 5; r++) {
             for (let c = 0; c <= BOARD_SIZE - 5; c++) {
-                SEGMENTS.push([[r, c], [r+1, c+1], [r+2, c+2], [r+3, c+3], [r+4, c+4]]);
+                const seg = [[r, c], [r+1, c+1], [r+2, c+2], [r+3, c+3], [r+4, c+4]];
+                seg.left = [r - 1, c - 1];
+                seg.right = [r + 5, c + 5];
+                SEGMENTS.push(seg);
             }
         }
         // 斜上 (/)
         for (let r = 4; r < BOARD_SIZE; r++) {
             for (let c = 0; c <= BOARD_SIZE - 5; c++) {
-                SEGMENTS.push([[r, c], [r-1, c+1], [r-2, c+2], [r-3, c+3], [r-4, c+4]]);
+                const seg = [[r, c], [r-1, c+1], [r-2, c+2], [r-3, c+3], [r-4, c+4]];
+                seg.left = [r + 1, c - 1];
+                seg.right = [r - 5, c + 5];
+                SEGMENTS.push(seg);
             }
         }
 
@@ -302,40 +314,122 @@
     // ==========================================================================
     // 局勢評估與評分 (Heuristic Scoring)
     // ==========================================================================
+    // 輔助函數：評估單個 5 子區段對某種顏色的棋型得分
+    function evaluateSegmentPattern(segment, color, board) {
+        const oppColor = 3 - color;
+        let myCount = 0;
+        let oppCount = 0;
+        
+        // 快速提取 5 格的值
+        const v0 = board[segment[0][0]][segment[0][1]];
+        const v1 = board[segment[1][0]][segment[1][1]];
+        const v2 = board[segment[2][0]][segment[2][1]];
+        const v3 = board[segment[3][0]][segment[3][1]];
+        const v4 = board[segment[4][0]][segment[4][1]];
+        
+        if (v0 === color) myCount++; else if (v0 === oppColor) oppCount++;
+        if (v1 === color) myCount++; else if (v1 === oppColor) oppCount++;
+        if (v2 === color) myCount++; else if (v2 === oppColor) oppCount++;
+        if (v3 === color) myCount++; else if (v3 === oppColor) oppCount++;
+        if (v4 === color) myCount++; else if (v4 === oppColor) oppCount++;
+        
+        if (myCount > 0 && oppCount > 0) return 0; // 混合區段無價值
+        if (myCount === 0) return 0;
+        
+        // 5 個全滿，直接成五
+        if (myCount === 5) return 10000000;
+        
+        // 讀取預先計算的外側座標
+        const leftR = segment.left[0];
+        const leftC = segment.left[1];
+        const rightR = segment.right[0];
+        const rightC = segment.right[1];
+        
+        const leftFree = leftR >= 0 && leftR < 15 && leftC >= 0 && leftC < 15 && board[leftR][leftC] === 0;
+        const rightFree = rightR >= 0 && rightR < 15 && rightC >= 0 && rightC < 15 && board[rightR][rightC] === 0;
+        
+        if (myCount === 4) {
+            // 4個子，1個空格
+            if (v0 === 0) return rightFree ? 300000 : 80000; // 01111 活四 / 衝四
+            if (v4 === 0) return leftFree ? 300000 : 80000;  // 11110 活四 / 衝四
+            return 80000; // 10111, 11011, 11101 均為衝四 (死四)
+        }
+        
+        if (myCount === 3) {
+            // 3個子，2個空格
+            // 01110 活三
+            if (v0 === 0 && v4 === 0) {
+                if (v1 === color && v2 === color && v3 === color) return 30000;
+            }
+            // 11100
+            if (v0 === color && v1 === color && v2 === color && v3 === 0 && v4 === 0) {
+                return leftFree ? 30000 : 3000;
+            }
+            // 00111
+            if (v0 === 0 && v1 === 0 && v2 === color && v3 === color && v4 === color) {
+                return rightFree ? 30000 : 3000;
+            }
+            // 跳活三/死三判斷
+            if (v0 === 0 && v1 === color && v2 === 0 && v3 === color && v4 === color) {
+                return rightFree ? 20000 : 3000; // 01011
+            }
+            if (v0 === color && v1 === color && v2 === 0 && v3 === color && v4 === 0) {
+                return leftFree ? 20000 : 3000;  // 11010
+            }
+            if (v0 === 0 && v1 === color && v2 === color && v3 === 0 && v4 === color) {
+                return rightFree ? 20000 : 3000; // 01101
+            }
+            if (v0 === color && v1 === 0 && v2 === color && v3 === color && v4 === 0) {
+                return leftFree ? 20000 : 3000;  // 10110
+            }
+            if (v0 === color && v1 === 0 && v2 === color && v3 === 0 && v4 === color) {
+                return (leftFree && rightFree) ? 15000 : 3000; // 10101
+            }
+            return 3000; // 其他死三 (衝三)
+        }
+        
+        if (myCount === 2) {
+            // 2個子，3個空格
+            if ((v1 === color && v2 === color && v0 === 0 && v3 === 0) || 
+                (v2 === color && v3 === color && v1 === 0 && v4 === 0)) {
+                return 2000; // 活二
+            }
+            if (v0 === color && v1 === color && v2 === 0 && v3 === 0 && v4 === 0) {
+                return leftFree ? 1000 : 200; // 11000
+            }
+            if (v0 === 0 && v1 === 0 && v2 === 0 && v3 === color && v4 === color) {
+                return rightFree ? 1000 : 200; // 00011
+            }
+            if (v0 === 0 && v1 === color && v2 === 0 && v3 === color && v4 === 0) {
+                return 1500; // 01010 跳活二
+            }
+            return 200; // 其他死二
+        }
+        
+        return 80; // 1個子
+    }
+
+    // 局勢評估與評分 (Heuristic Scoring)
     function evaluateBoard(board, aiColor) {
         const playerColor = 3 - aiColor;
         let score = 0;
 
         for (let i = 0; i < SEGMENTS.length; i++) {
             const seg = SEGMENTS[i];
-            let aiCount = 0;
-            let playerCount = 0;
-
-            for (let j = 0; j < 5; j++) {
-                const val = board[seg[j][0]][seg[j][1]];
-                if (val === aiColor) aiCount++;
-                else if (val === playerColor) playerCount++;
-            }
-
-            if (aiCount > 0 && playerCount > 0) continue;
-
-            if (aiCount > 0) {
-                if (aiCount === 5) score += 10000000;
-                else if (aiCount === 4) score += 120000;
-                else if (aiCount === 3) score += 2000;
-                else if (aiCount === 2) score += 200;
-                else if (aiCount === 1) score += 20;
-            } else if (playerCount > 0) {
-                if (playerCount === 5) score -= 8000000;
-                else if (playerCount === 4) score -= 600000; // 防守權重提高
-                else if (playerCount === 3) score -= 15000;  // 活三防守提高
-                else if (playerCount === 2) score -= 150;
-                else if (playerCount === 1) score -= 15;
-            }
+            
+            // 計算 AI 的局勢評分
+            const aiScore = evaluateSegmentPattern(seg, aiColor, board);
+            
+            // 計算玩家的局勢評分 (防守阻礙)
+            const playerScore = evaluateSegmentPattern(seg, playerColor, board);
+            
+            score += aiScore;
+            score -= playerScore * 1.5; // 提高對手得分的權重，主動防守
         }
         return score;
     }
 
+    // 獲取某一空格落子後的即時攻防分數 (著法排序優化用)
     function getImmediateScore(board, r, c, color) {
         const oppColor = 3 - color;
         let score = 0;
@@ -343,29 +437,18 @@
 
         for (let i = 0; i < segIndices.length; i++) {
             const seg = SEGMENTS[segIndices[i]];
-            let myCount = 0;
-            let oppCount = 0;
-
-            for (let j = 0; j < 5; j++) {
-                const val = board[seg[j][0]][seg[j][1]];
-                if (val === color) myCount++;
-                else if (val === oppColor) oppCount++;
-            }
-
-            if (myCount > 0 && oppCount > 0) continue;
-
-            if (oppCount === 0) {
-                if (myCount === 4) score += 50000;
-                else if (myCount === 3) score += 5000;
-                else if (myCount === 2) score += 500;
-                else score += 40;
-            }
-            if (myCount === 0) {
-                if (oppCount === 4) score += 40000;
-                else if (oppCount === 3) score += 4000;
-                else if (oppCount === 2) score += 300;
-                else score += 20;
-            }
+            
+            // 模擬我方落子
+            board[r][c] = color;
+            const myScore = evaluateSegmentPattern(seg, color, board);
+            board[r][c] = 0;
+            
+            // 模擬對手落子 (阻礙分數)
+            board[r][c] = oppColor;
+            const oppScore = evaluateSegmentPattern(seg, oppColor, board);
+            board[r][c] = 0;
+            
+            score += myScore + oppScore * 1.2;
         }
         return score;
     }
@@ -544,6 +627,7 @@
 
         const oppColor = 3 - aiColor;
         const originalAlpha = alpha;
+        const originalBeta = beta;
 
         // 查詢置換表 (TT)
         const ttEntry = TRANSPOSITION_TABLE.get(hash);
@@ -570,6 +654,18 @@
 
         if (depth === 0) {
             return evaluateBoard(board, aiColor);
+        }
+
+        // --- 空步剪枝 (Null Move Pruning) ---
+        if (isMaximizing && depth >= 3 && lastR !== undefined) {
+            const staticEval = evaluateBoard(board, aiColor);
+            if (staticEval >= beta) {
+                // R = 2. 傳入 undefined 避免勝負檢查
+                const nullMoveEval = minimax(board, depth - 1 - 2, alpha, beta, false, aiColor, undefined, undefined, hash, rulesEnabled);
+                if (nullMoveEval >= beta) {
+                    return beta; // 截斷
+                }
+            }
         }
 
         const candidates = getCandidates(board);
@@ -619,8 +715,19 @@
         let bestMove = null;
         if (isMaximizing) {
             let maxEval = -Infinity;
+            const isFutilityOk = (depth === 1);
+            const staticEval = isFutilityOk ? evaluateBoard(board, aiColor) : 0;
+            
             for (let i = 0; i < scoredCandidates.length; i++) {
                 const move = scoredCandidates[i];
+                
+                // --- 無用剪枝 (Futility Pruning) ---
+                if (isFutilityOk) {
+                    if (staticEval + move.score < alpha) {
+                        continue;
+                    }
+                }
+                
                 board[move.r][move.c] = aiColor;
                 const nextHash = hash ^ ZOBRIST_TABLE[move.r][move.c][aiColor];
                 const evalVal = minimax(board, depth - 1, alpha, beta, false, aiColor, move.r, move.c, nextHash, rulesEnabled);
@@ -678,7 +785,7 @@
             if (!isSearchTimeout) {
                 let flag = EXACT;
                 if (minEval <= originalAlpha) flag = UPPERBOUND;
-                else if (minEval >= beta) flag = LOWERBOUND;
+                else if (minEval >= originalBeta) flag = LOWERBOUND;
                 
                 // 限制置換表容量在 100,000 以內 (LRU 淘汰)
                 if (TRANSPOSITION_TABLE.size >= 100000) {
@@ -751,11 +858,21 @@
 
     function solveVCT(board, color, maxDepth = 8, rulesEnabled = false) {
         const oppColor = 3 - color;
+        const VCT_CACHE = new Map();
+        const startHash = computeBoardHash(board);
         
-        function vctSearch(depth) {
+        function vctSearch(depth, hash) {
             if (depth <= 0) return null;
             
+            // 查詢 VCT 快取 (Zobrist Hash 快速剪枝)
+            const cached = VCT_CACHE.get(hash);
+            if (cached && cached.depth >= depth) {
+                return cached.path;
+            }
+            
+            let result = null;
             const candidates = getCandidates(board);
+            
             // 1. 檢查是否能一步成五贏棋
             for (let i = 0; i < candidates.length; i++) {
                 const pos = candidates[i];
@@ -765,91 +882,117 @@
                 const isWin = checkWinFromPos(board, pos.r, pos.c);
                 board[pos.r][pos.c] = 0;
                 if (isWin) {
-                    return [pos];
+                    result = [pos];
+                    break;
                 }
             }
             
-            // 2. 搜尋衝四點 (VCF)
-            const fourMoves = findFourMoves(board, color, rulesEnabled);
-            for (let i = 0; i < fourMoves.length; i++) {
-                const move = fourMoves[i];
-                const attack = move.attack;
-                board[attack.r][attack.c] = color;
-                
-                if (move.defends.length >= 2) {
-                    board[attack.r][attack.c] = 0;
-                    return [attack];
-                }
-                
-                if (move.defends.length === 1) {
-                    const defend = move.defends[0];
-                    board[defend.r][defend.c] = oppColor;
+            if (result === null) {
+                // 2. 搜尋衝四點 (VCF)
+                const fourMoves = findFourMoves(board, color, rulesEnabled);
+                for (let i = 0; i < fourMoves.length; i++) {
+                    const move = fourMoves[i];
+                    const attack = move.attack;
+                    board[attack.r][attack.c] = color;
+                    const nextHashAttack = hash ^ ZOBRIST_TABLE[attack.r][attack.c][color];
                     
-                    const subPath = vctSearch(depth - 1);
-                    
-                    board[defend.r][defend.c] = 0;
-                    board[attack.r][attack.c] = 0;
-                    
-                    if (subPath !== null) {
-                        return [attack, defend].concat(subPath);
-                    }
-                } else {
-                    board[attack.r][attack.c] = 0;
-                }
-            }
-            
-            // 3. 搜尋活三點 (VCT)
-            const threeMoves = [];
-            for (let i = 0; i < candidates.length; i++) {
-                const pos = candidates[i];
-                if (rulesEnabled && color === 1 && checkForbidden(board, pos.r, pos.c, 1)) continue;
-                
-                if (createsLiveFour(board, pos.r, pos.c, color)) {
-                    const defends = getLiveFourDefends(board, pos.r, pos.c, color);
-                    if (defends.length > 0) {
-                        threeMoves.push({
-                            attack: pos,
-                            defends: defends
-                        });
-                    }
-                }
-            }
-            
-            for (let i = 0; i < threeMoves.length; i++) {
-                const move = threeMoves[i];
-                const attack = move.attack;
-                
-                board[attack.r][attack.c] = color;
-                
-                let allDefendsSucceed = true;
-                const fullPath = [];
-                
-                for (let j = 0; j < move.defends.length; j++) {
-                    const def = move.defends[j];
-                    board[def.r][def.c] = oppColor;
-                    
-                    const subPath = vctSearch(depth - 1);
-                    board[def.r][def.c] = 0;
-                    
-                    if (subPath === null) {
-                        allDefendsSucceed = false;
+                    if (move.defends.length >= 2) {
+                        board[attack.r][attack.c] = 0;
+                        result = [attack];
                         break;
+                    }
+                    
+                    if (move.defends.length === 1) {
+                        const defend = move.defends[0];
+                        board[defend.r][defend.c] = oppColor;
+                        const nextHashDefend = nextHashAttack ^ ZOBRIST_TABLE[defend.r][defend.c][oppColor];
+                        
+                        const subPath = vctSearch(depth - 1, nextHashDefend);
+                        
+                        board[defend.r][defend.c] = 0;
+                        board[attack.r][attack.c] = 0;
+                        
+                        if (subPath !== null) {
+                            result = [attack, defend].concat(subPath);
+                            break;
+                        }
                     } else {
-                        fullPath.push({ defend: def, path: subPath });
+                        board[attack.r][attack.c] = 0;
+                    }
+                }
+            }
+            
+            if (result === null) {
+                // 3. 搜尋活三點 (VCT)
+                const threeMoves = [];
+                for (let i = 0; i < candidates.length; i++) {
+                    const pos = candidates[i];
+                    if (rulesEnabled && color === 1 && checkForbidden(board, pos.r, pos.c, 1)) continue;
+                    
+                    if (createsLiveFour(board, pos.r, pos.c, color)) {
+                        const defends = getLiveFourDefends(board, pos.r, pos.c, color);
+                        if (defends.length > 0) {
+                            threeMoves.push({
+                                attack: pos,
+                                defends: defends
+                            });
+                        }
                     }
                 }
                 
-                board[attack.r][attack.c] = 0;
+                // VCT 著法排序：優先探測攻防估分高的威脅點
+                threeMoves.sort((a, b) => {
+                    return getImmediateScore(board, b.attack.r, b.attack.c, color) - 
+                           getImmediateScore(board, a.attack.r, a.attack.c, color);
+                });
                 
-                if (allDefendsSucceed && move.defends.length > 0) {
-                    const choice = fullPath[0];
-                    return [attack, choice.defend].concat(choice.path);
+                for (let i = 0; i < threeMoves.length; i++) {
+                    const move = threeMoves[i];
+                    const attack = move.attack;
+                    
+                    board[attack.r][attack.c] = color;
+                    const nextHashAttack = hash ^ ZOBRIST_TABLE[attack.r][attack.c][color];
+                    
+                    let allDefendsSucceed = true;
+                    const fullPath = [];
+                    
+                    for (let j = 0; j < move.defends.length; j++) {
+                        const def = move.defends[j];
+                        board[def.r][def.c] = oppColor;
+                        const nextHashDefend = nextHashAttack ^ ZOBRIST_TABLE[def.r][def.c][oppColor];
+                        
+                        const subPath = vctSearch(depth - 1, nextHashDefend);
+                        board[def.r][def.c] = 0;
+                        
+                        if (subPath === null) {
+                            allDefendsSucceed = false;
+                            break;
+                        } else {
+                            fullPath.push({ defend: def, path: subPath });
+                        }
+                    }
+                    
+                    board[attack.r][attack.c] = 0;
+                    
+                    if (allDefendsSucceed && move.defends.length > 0) {
+                        const choice = fullPath[0];
+                        result = [attack, choice.defend].concat(choice.path);
+                        break;
+                    }
                 }
             }
-            return null;
+            
+            // 寫入 VCT 快取 (LRU 淘汰)
+            if (VCT_CACHE.size >= 50000) {
+                const firstKey = VCT_CACHE.keys().next().value;
+                VCT_CACHE.delete(firstKey);
+            }
+            VCT_CACHE.set(hash, { depth, path: result });
+            
+            return result;
         }
         
-        return vctSearch(maxDepth);
+        return vctSearch(maxDepth, startHash);
     }
 
     // ==========================================================================
@@ -1103,6 +1246,39 @@
                     return { r: 7, c: 7 };
                 }
 
+                // 開局第二手 (AI 執白第一步，最優直防/斜防)
+                if (stoneCount === 1) {
+                    return Math.random() < 0.5 ? { r: 7, c: 8 } : { r: 8, c: 8 };
+                }
+
+                // 開局第三手 (AI 執黑第二步，發動最強花月必勝開局)
+                if (stoneCount === 2) {
+                    let w2 = null;
+                    for (let r = 0; r < BOARD_SIZE; r++) {
+                        for (let c = 0; c < BOARD_SIZE; c++) {
+                            if (board[r][c] === 2) {
+                                w2 = { r, c };
+                                break;
+                            }
+                        }
+                        if (w2) break;
+                    }
+                    
+                    if (w2) {
+                        const dr = w2.r - 7;
+                        const dc = w2.c - 7;
+                        if (Math.abs(dr) <= 2 && Math.abs(dc) <= 2) {
+                            if (dr === 0) {
+                                return Math.random() < 0.5 ? { r: 8, c: 7 + dc } : { r: 6, c: 7 + dc };
+                            } else if (dc === 0) {
+                                return Math.random() < 0.5 ? { r: 7 + dr, c: 8 } : { r: 7 + dr, c: 6 };
+                            } else if (Math.abs(dr) === 1 && Math.abs(dc) === 1) {
+                                return Math.random() < 0.5 ? { r: 7 + dr, c: 7 } : { r: 7, c: 7 + dc };
+                            }
+                        }
+                    }
+                }
+
                 // 1. 優先執行 VCF 連續衝四絕殺搜尋 (自己)
                 const vcfPath = solveVCF(board, aiColor, 10, rulesEnabled); // 探測 10 步連衝
                 if (vcfPath && vcfPath.length > 0) {
@@ -1241,6 +1417,7 @@
     global.GomokuAI = GomokuAI;
 
 })(typeof window !== 'undefined' ? window : self);
+
 
 
 
