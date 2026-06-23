@@ -1521,7 +1521,8 @@ export const ui = {
         if (this.state.gameMode === 'p2p') {
             if (isP2P) {
                 if (this.state.currentTurn === myColor) {
-                    this.dom.statusText.innerText = '您的回合 (請落子)';
+                    const colorName = myColor === 1 ? '黑子' : '白子';
+                    this.dom.statusText.innerText = `您的回合 (請落子 - 您持${colorName})`;
                     this.dom.statusText.style.color = 'var(--accent-primary)';
                 } else {
                     this.dom.statusText.innerText = '等待對手落子...';
@@ -1546,7 +1547,8 @@ export const ui = {
         } else {
             if (this.state.gameMode === 'ai') {
                 if (this.state.currentTurn === this.state.playerColor) {
-                    this.dom.statusText.innerText = '您的回合 (請落子)';
+                    const colorName = this.state.playerColor === 1 ? '黑子' : '白子';
+                    this.dom.statusText.innerText = `您的回合 (請落子 - 您持${colorName})`;
                     this.dom.statusText.style.color = 'var(--accent-primary)';
                 } else {
                     this.dom.statusText.innerText = 'AI 思考中...';
@@ -2422,6 +2424,7 @@ export const ui = {
         this.renderPuzzleLevels();
     }
 };
+
 
 
 

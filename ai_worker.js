@@ -5,14 +5,16 @@
  */
 
 // 載入 AI 演算法核心庫
-importScripts('ai.js?v=2.3.0');
+importScripts('ai.js?v=2.4.0');
 
 self.onmessage = function(e) {
     const { board, aiColor, difficulty, rulesEnabled } = e.data;
     
     try {
-        // 呼叫 GomokuAI 運算最佳落子位置
-        const bestMove = self.GomokuAI.getBestMove(board, aiColor, difficulty, rulesEnabled);
+        // 呼叫 GomokuAI 運算最佳落子位置，傳入 onProgress 回調傳遞即時進度
+        const bestMove = self.GomokuAI.getBestMove(board, aiColor, difficulty, rulesEnabled, (progress) => {
+            self.postMessage({ type: 'progress', progress });
+        });
         
         // 將結果回傳給主執行緒
         self.postMessage({ bestMove });
@@ -21,6 +23,7 @@ self.onmessage = function(e) {
         self.postMessage({ bestMove: null, error: err.toString() });
     }
 };
+
 
 
 

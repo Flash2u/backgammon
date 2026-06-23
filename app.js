@@ -6,7 +6,7 @@ import { p2p } from './src/p2p.js?t=1782020700006';
 
 
 function startApp() {
-    console.log("🚀 [App] 應用程式初始化成功。版本：2.3.0");
+    console.log("🚀 [App] 應用程式初始化成功。版本：2.4.0");
     let isUndoing = false;
     let gameSeconds = 0;
     let timerInterval = null;
@@ -1003,6 +1003,7 @@ if (document.readyState === 'loading') {
 } else {
     startApp();
 }
+
 
 
 

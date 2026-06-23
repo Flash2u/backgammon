@@ -876,9 +876,43 @@
          * @param {Boolean} rulesEnabled 是否開啟禁手
          * @returns {Object} 最佳落子座標 {r, c}
          */
-        getBestMove(board, aiColor, difficulty, rulesEnabled = false) {
+        getBestMove(board, aiColor, difficulty, rulesEnabled = false, onProgress = null) {
             const playerColor = 3 - aiColor;
             const candidates = getCandidates(board);
+
+            // 輔助函數：從置換表中提取 PV 路徑
+            function getPVPath(boardState, currentColor, firstMove, rulesOn) {
+                const pv = [];
+                if (!firstMove) return pv;
+                pv.push(firstMove);
+                
+                const tempBoard = Array(BOARD_SIZE).fill(null).map((_, r) => [...boardState[r]]);
+                let currentHash = computeBoardHash(tempBoard);
+                let color = currentColor;
+                
+                // 模擬第一步落子
+                tempBoard[firstMove.r][firstMove.c] = color;
+                currentHash = currentHash ^ ZOBRIST_TABLE[firstMove.r][firstMove.c][color];
+                
+                // 最多探索 4 步 (包含首步共 5 步)
+                for (let step = 0; step < 4; step++) {
+                    color = 3 - color; // 切換方
+                    const entry = TRANSPOSITION_TABLE.get(currentHash);
+                    if (entry && entry.bestMove) {
+                        const m = entry.bestMove;
+                        if (m.r >= 0 && m.r < BOARD_SIZE && m.c >= 0 && m.c < BOARD_SIZE && tempBoard[m.r][m.c] === 0) {
+                            pv.push(m);
+                            tempBoard[m.r][m.c] = color;
+                            currentHash = currentHash ^ ZOBRIST_TABLE[m.r][m.c][color];
+                        } else {
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                }
+                return pv;
+            }
 
             // ==========================================================================
             // 強制性進攻與防守檢測 (最高優先級，不限難度)
@@ -1181,6 +1215,17 @@
                     if (!isSearchTimeout && currentDepthBestMove) {
                         bestMove = currentDepthBestMove;
                         console.log(`IDS Depth ${depth} completed in ${Date.now() - startTime}ms. Nodes: ${nodeCount}. BestMove: (${bestMove.r}, ${bestMove.c})`);
+                        
+                        if (typeof onProgress === 'function') {
+                            const pvPath = getPVPath(board, aiColor, bestMove, rulesEnabled);
+                            onProgress({
+                                depth: depth,
+                                nodes: nodeCount,
+                                nps: Math.round(nodeCount / ((Date.now() - startTime + 1) / 1000)),
+                                score: maxEval,
+                                pv: pvPath
+                            });
+                        }
                     } else {
                         break; // 搜尋中斷，不再前記
                     }
@@ -1196,5 +1241,6 @@
     global.GomokuAI = GomokuAI;
 
 })(typeof window !== 'undefined' ? window : self);
+
 
 
