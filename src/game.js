@@ -316,15 +316,15 @@ export const game = {
                         if (isFatal) {
                             const winObj = c5Black || c5White;
                             if (winObj && winObj.stones && winObj.stones.length > 0) {
-                                const stones = winObj.stones;
-                                let minR = Infinity, maxR = -Infinity, minC = Infinity, maxC = -Infinity;
-                                stones.forEach(s => {
-                                    if (s.r < minR) minR = s.r;
-                                    if (s.r > maxR) maxR = s.r;
-                                    if (s.c < minC) minC = s.c;
-                                    if (s.c > maxC) maxC = s.c;
+                                const stones = [...winObj.stones];
+                                // 對棋子進行 row 與 col 的雙重排序，以獲取精確的物理兩端點
+                                stones.sort((a, b) => {
+                                    if (a.r !== b.r) return a.r - b.r;
+                                    return a.c - b.c;
                                 });
-                                threatLine = { r1: minR, c1: minC, r2: maxR, c2: maxC };
+                                const p1 = stones[0];
+                                const p2 = stones[stones.length - 1];
+                                threatLine = { r1: p1.r, c1: p1.c, r2: p2.r, c2: p2.c };
                             }
                         } else {
                             const l4Obj = cl4Black || cl4White;
@@ -483,4 +483,5 @@ export const game = {
         return hash;
     }
 };
+
 
