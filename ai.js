@@ -880,6 +880,71 @@
             const playerColor = 3 - aiColor;
             const candidates = getCandidates(board);
 
+            // ==========================================================================
+            // 強制性即時成五與即時防禦檢測 (最高優先級，不限難度)
+            // ==========================================================================
+            const myWinMoves = [];
+            const oppWinMoves = [];
+
+            for (let i = 0; i < candidates.length; i++) {
+                const pos = candidates[i];
+                
+                // 1. 檢查自己是否能一步成五 (若為黑棋且啟用禁手，過濾禁手點)
+                let isMyWin = false;
+                if (!(rulesEnabled && aiColor === 1 && checkForbidden(board, pos.r, pos.c, 1))) {
+                    board[pos.r][pos.c] = aiColor;
+                    if (checkWinFromPos(board, pos.r, pos.c)) {
+                        isMyWin = true;
+                    }
+                    board[pos.r][pos.c] = 0;
+                }
+                if (isMyWin) {
+                    myWinMoves.push(pos);
+                }
+
+                // 2. 檢查對手是否能一步成五 (若對手是黑棋且啟用禁手，過濾對手禁手點)
+                let isOppWin = false;
+                if (!(rulesEnabled && playerColor === 1 && checkForbidden(board, pos.r, pos.c, 1))) {
+                    board[pos.r][pos.c] = playerColor;
+                    if (checkWinFromPos(board, pos.r, pos.c)) {
+                        isOppWin = true;
+                    }
+                    board[pos.r][pos.c] = 0;
+                }
+                if (isOppWin) {
+                    // AI 去封堵該點時，對 AI 而言不能是禁手點 (若 AI 是黑棋且啟用禁手)
+                    if (!(rulesEnabled && aiColor === 1 && checkForbidden(board, pos.r, pos.c, 1))) {
+                        oppWinMoves.push(pos);
+                    }
+                }
+            }
+
+            // 優先級 1：自己有一步成五點，直接落子贏得比賽
+            if (myWinMoves.length > 0) {
+                console.log("Immediate win detected for AI!", myWinMoves[0]);
+                return myWinMoves[0];
+            }
+
+            // 優先級 2：對手有一步成五點 (即死四/活四)，AI 必須落子在此進行阻擋
+            if (oppWinMoves.length > 0) {
+                console.log("Immediate threat detected! Opponent can win. Defending at:", oppWinMoves[0]);
+                // 若有多個防守點 (活四兩端)，選擇對 AI 局勢最有利的點
+                if (oppWinMoves.length > 1) {
+                    let bestDefMove = oppWinMoves[0];
+                    let maxScore = -Infinity;
+                    for (let i = 0; i < oppWinMoves.length; i++) {
+                        const move = oppWinMoves[i];
+                        const score = getImmediateScore(board, move.r, move.c, aiColor);
+                        if (score > maxScore) {
+                            maxScore = score;
+                            bestDefMove = move;
+                        }
+                    }
+                    return bestDefMove;
+                }
+                return oppWinMoves[0];
+            }
+
             // 1. 簡單難度 (Easy)
             if (difficulty === 'easy') {
                 const scoredCandidates = [];
@@ -1064,3 +1129,4 @@
     global.GomokuAI = GomokuAI;
 
 })(typeof window !== 'undefined' ? window : self);
+

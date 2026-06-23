@@ -5,7 +5,7 @@
  */
 
 // 載入 AI 演算法核心庫
-importScripts('ai.js?v=1.9.5');
+importScripts('ai.js?v=2.0.4');
 
 self.onmessage = function(e) {
     const { board, aiColor, difficulty, rulesEnabled } = e.data;
@@ -21,3 +21,4 @@ self.onmessage = function(e) {
         self.postMessage({ bestMove: null, error: err.toString() });
     }
 };
+
