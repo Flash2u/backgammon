@@ -881,10 +881,12 @@
             const candidates = getCandidates(board);
 
             // ==========================================================================
-            // 強制性即時成五與即時防禦檢測 (最高優先級，不限難度)
+            // 強制性進攻與防守檢測 (最高優先級，不限難度)
             // ==========================================================================
-            const myWinMoves = [];
-            const oppWinMoves = [];
+            const myWinMoves = [];       // AI 自身成五點 (Priority 1)
+            const oppWinMoves = [];      // 對手成五點 (Priority 2)
+            const myLiveFourMoves = [];  // AI 自身成活四點 (Priority 3)
+            const oppLiveFourMoves = []; // 對手成活四點 (Priority 4)
 
             for (let i = 0; i < candidates.length; i++) {
                 const pos = candidates[i];
@@ -917,6 +919,31 @@
                         oppWinMoves.push(pos);
                     }
                 }
+
+                // 3. 檢查自己是否能一步成活四 (若為黑棋且啟用禁手，過濾禁手點)
+                let isMyLiveFour = false;
+                if (!(rulesEnabled && aiColor === 1 && checkForbidden(board, pos.r, pos.c, 1))) {
+                    if (createsLiveFour(board, pos.r, pos.c, aiColor)) {
+                        isMyLiveFour = true;
+                    }
+                }
+                if (isMyLiveFour) {
+                    myLiveFourMoves.push(pos);
+                }
+
+                // 4. 檢查對手是否能一步成活四 (若對手是黑棋且啟用禁手，過濾對手禁手點)
+                let isOppLiveFour = false;
+                if (!(rulesEnabled && playerColor === 1 && checkForbidden(board, pos.r, pos.c, 1))) {
+                    if (createsLiveFour(board, pos.r, pos.c, playerColor)) {
+                        isOppLiveFour = true;
+                    }
+                }
+                if (isOppLiveFour) {
+                    // AI 去封堵該點時，對 AI 而言不能是禁手點 (若 AI 是黑棋且啟用禁手)
+                    if (!(rulesEnabled && aiColor === 1 && checkForbidden(board, pos.r, pos.c, 1))) {
+                        oppLiveFourMoves.push(pos);
+                    }
+                }
             }
 
             // 優先級 1：自己有一步成五點，直接落子贏得比賽
@@ -943,6 +970,46 @@
                     return bestDefMove;
                 }
                 return oppWinMoves[0];
+            }
+
+            // 優先級 3：自己有一步成活四點，優先落子形成必勝局勢 (前提是對手這一步無法成五)
+            if (myLiveFourMoves.length > 0) {
+                console.log("AI can create a Live Four! Playing at:", myLiveFourMoves[0]);
+                // 若有多個成活四點，選擇評分最高的點
+                if (myLiveFourMoves.length > 1) {
+                    let bestLiveFourMove = myLiveFourMoves[0];
+                    let maxScore = -Infinity;
+                    for (let i = 0; i < myLiveFourMoves.length; i++) {
+                        const move = myLiveFourMoves[i];
+                        const score = getImmediateScore(board, move.r, move.c, aiColor);
+                        if (score > maxScore) {
+                            maxScore = score;
+                            bestLiveFourMove = move;
+                        }
+                    }
+                    return bestLiveFourMove;
+                }
+                return myLiveFourMoves[0];
+            }
+
+            // 優先級 4：對手有一步成活四點 (即活三/雙活三)，AI 必須落子封堵
+            if (oppLiveFourMoves.length > 0) {
+                console.log("Opponent can create a Live Four! Defending at:", oppLiveFourMoves[0]);
+                // 若有多個封堵點 (例如雙活三或單活三兩端)，選擇對 AI 局勢最有利的點
+                if (oppLiveFourMoves.length > 1) {
+                    let bestDefMove = oppLiveFourMoves[0];
+                    let maxScore = -Infinity;
+                    for (let i = 0; i < oppLiveFourMoves.length; i++) {
+                        const move = oppLiveFourMoves[i];
+                        const score = getImmediateScore(board, move.r, move.c, aiColor);
+                        if (score > maxScore) {
+                            maxScore = score;
+                            bestDefMove = move;
+                        }
+                    }
+                    return bestDefMove;
+                }
+                return oppLiveFourMoves[0];
             }
 
             // 1. 簡單難度 (Easy)
@@ -1129,4 +1196,5 @@
     global.GomokuAI = GomokuAI;
 
 })(typeof window !== 'undefined' ? window : self);
+
 

@@ -1271,7 +1271,21 @@ export const ui = {
                 if (!cell.querySelector('.stone')) {
                     const stoneEl = document.createElement('div');
                     stoneEl.className = `stone ${color === 1 ? 'black' : 'white'}`;
+                    
+                    // 標記最後一手
+                    if (this.state.lastMove && this.state.lastMove.r === r && this.state.lastMove.c === c) {
+                        stoneEl.classList.add('last-move');
+                    }
+                    
                     cell.appendChild(stoneEl);
+                } else {
+                    // 如果已經存在棋子，也需要更新其 last-move 標記狀態
+                    const existingStone = cell.querySelector('.stone');
+                    if (this.state.lastMove && this.state.lastMove.r === r && this.state.lastMove.c === c) {
+                        existingStone.classList.add('last-move');
+                    } else {
+                        existingStone.classList.remove('last-move');
+                    }
                 }
             }
         });
@@ -1283,6 +1297,11 @@ export const ui = {
         const cell = this.dom.board.querySelector(`[data-row="${r}"][data-col="${c}"]`);
         if (!cell) return;
 
+        // 清除其他所有棋子的最後一手標記
+        this.dom.board.querySelectorAll('.stone.last-move').forEach(el => {
+            el.classList.remove('last-move');
+        });
+
         cell.classList.add('has-stone');
         
         // 避免重複生成
@@ -1290,7 +1309,7 @@ export const ui = {
         if (stone) stone.remove();
 
         stone = document.createElement('div');
-        stone.className = `stone ${color === 1 ? 'black' : 'white'}`;
+        stone.className = `stone ${color === 1 ? 'black' : 'white'} last-move`;
         cell.appendChild(stone);
 
         // 3D 物理墜落微震
@@ -2403,6 +2422,7 @@ export const ui = {
         this.renderPuzzleLevels();
     }
 };
+
 
 
 
