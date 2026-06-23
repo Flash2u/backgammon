@@ -356,21 +356,21 @@
             <h2 class="modal-title">關於遊戲</h2>
             <div class="modal-scroll-area">
                 <p style="margin-bottom: 12px; font-weight: 600; text-align: center; font-size: 1rem; color: var(--text-primary);">🌌 Cyber Gomoku - 極致美學五子棋</p>
-                <p style="margin-bottom: 6px;"><strong>目前版本：</strong>v2.0.5</p>
-                <p style="margin-bottom: 6px;"><strong>發布日期：</strong>2026-06-21</p>
+                <p style="margin-bottom: 6px;"><strong>目前版本：</strong>v2.2.0</p>
+                <p style="margin-bottom: 6px;"><strong>發布日期：</strong>2026-06-24</p>
                 <p style="margin-bottom: 12px;"><strong>開發團隊：</strong>Antigravity AI Co-Pilot & Yuki</p>
                 <hr>
-                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">🛠️ 本版本摘要 (v2.0.5)：</p>
+                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">🛠️ 本版本摘要 (v2.2.0)：</p>
                 <ul>
-                    <li>🌐 **消滅大廳 REST 報錯**：徹底移除已失效的 `kvdb.io` 服務，完全切換為純 WebSocket 毫秒級即時大廳，消滅 console 404 報錯。</li>
-                    <li>🔑 **PeerJS 信令金鑰認證**：補齊 PeerJS 官方大廳所需的 `key: 'peerjs'` 金鑰，解決 A 與 B 雙方無法取得 ID 且無法互通連線的致命 Bug。</li>
-                    <li>🔌 **客方連結跳轉大廳**：解決客方貼上邀請連結進入時，大廳列表卡在「大廳房間載入中...」的 Bug。</li>
-                    <li>🤖 **AI 託管狀態重整**：修正對手斷線自動啟用 AI 託管後，狀態欄文字殘留並卡在「等待對手連線...」的 Bug。</li>
+                    <li>👁️ **最後落子標示修復**：修復了棋盤上「最後一次落子點」視覺發光標記遺失的 Bug。現在會正確顯示呼吸發光環（霓虹主題為綠色，其餘為紅色）。</li>
+                    <li>🤖 **AI 雙活三/活三防禦優化**：擴充了 AI 的強制攻防檢測優先級。當玩家形成「活三（包含跳活三及雙活三）」時，AI 將在第一時間封堵其成活四的關鍵點，大幅提升防禦智商。</li>
                 </ul>
                 <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-secondary);">📜 歷史版本摘要：</p>
                 <details style="margin-bottom: 12px; font-size: 0.85rem; color: var(--text-secondary);">
-                    <summary style="cursor: pointer; padding: 4px 0; color: var(--accent-primary); outline: none;">查看歷史更新歷史 (v1.8.1 及更早)</summary>
+                    <summary style="cursor: pointer; padding: 4px 0; color: var(--accent-primary); outline: none;">查看歷史更新歷史 (v2.1.0 及更早)</summary>
                     <ul style="padding-left: 16px; margin-top: 8px;">
+                        <li>🤖 **v2.1.0**：優化 AI 防禦邏輯，在決策最前端強制防堵對手死四（衝四），避免因進攻分數高於防禦分數而漏防死四的 Bug。</li>
+                        <li>🌐 **v2.0.3**：PeerJS 信令節點配置鎖定與 WebRTC 連線穩定度修復。</li>
                         <li>📦 **v1.8.1**：實作 ES Modules 模組化重構，解耦棋局大腦與 UI，提升程式維護性。</li>
                         <li>🌗 **v1.7.0**：支援威脅提示黑白棋子區分、致命/預警雙重分級、雙重威脅交替閃爍。</li>
                         <li>✨ **v1.6.0**：實作 3D 落子棋盤微震、悔棋反向飛起收回與滑鼠隨動反射光影。</li>
@@ -405,10 +405,11 @@
 
     <!-- Load scripts at the end -->
     <script src="src/peerjs.min.js?t=1782020700006"></script>
-    <script src="ai.js?t=1782020700008"></script>
+    <script src="ai.js?v=2.2.0"></script>
     <script type="module" src="app.js?t=1782020700006"></script>
 </body>
 </html>
+
 
 
 
