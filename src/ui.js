@@ -1,5 +1,5 @@
-﻿import { BOARD_SIZE, game } from './game.js?v=2.6.0';
-import { PUZZLES, getPuzzleProgress, completePuzzle } from './puzzle.js?v=2.6.0';
+﻿import { BOARD_SIZE, game } from './game.js?t=1782241400388';
+import { PUZZLES, getPuzzleProgress, completePuzzle } from './puzzle.js?t=1782241400388';
 
 // ==========================================================================
 // GomokuDB: IndexedDB 本地數據庫 (棋譜 & 自訂關卡)
@@ -2423,6 +2423,7 @@ export const ui = {
         this.renderPuzzleLevels();
     }
 };
+
 
 
 

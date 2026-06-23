@@ -1,4 +1,4 @@
-﻿import { state } from './game.js?v=2.6.0';
+﻿import { state } from './game.js?t=1782241400388';
 
 let peer = null;
 let p2pConn = null;
@@ -33,7 +33,7 @@ let callbacks = {
 export const p2p = {
     init(cbs) {
         callbacks = { ...callbacks, ...cbs };
-        console.log("🚀 [P2P] 模組初始化成功。版本：2.6.0 (方案 A 直連/TURN版)");
+        console.log("🚀 [P2P] 模組初始化成功。版本：2.7.0 (方案 A 直連/TURN版)");
 
         if (typeof Peer === 'undefined') {
             callbacks.onStatusChange('❌ 無法載入 P2P 模組', '#ef4444');
@@ -572,6 +572,7 @@ export const p2p = {
         return isRoomHost;
     }
 };
+
 
 
 

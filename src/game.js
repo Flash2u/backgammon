@@ -354,7 +354,7 @@ export const game = {
         onStartThinking();
 
         try {
-            aiWorker = new Worker('ai_worker.js?v=2.6.0');
+            aiWorker = new Worker('ai_worker.js?t=1782241400388');
             aiWorker.onmessage = (e) => {
                 if (state.isGameOver) return;
                 const { type, bestMove, progress, error } = e.data;
@@ -483,6 +483,7 @@ export const game = {
         return hash;
     }
 };
+
 
 
 

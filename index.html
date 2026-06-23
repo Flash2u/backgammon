@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>極致美學五子棋 - Cyber Gomoku</title>
-    <link rel="stylesheet" href="style.css?v=2.6.0">
+    <link rel="stylesheet" href="style.css?t=1782241400388">
     <!-- Google Fonts: Inter & Outfit for modern look -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -356,19 +356,20 @@
             <h2 class="modal-title">關於遊戲</h2>
             <div class="modal-scroll-area">
                 <p style="margin-bottom: 12px; font-weight: 600; text-align: center; font-size: 1rem; color: var(--text-primary);">🌌 Cyber Gomoku - 極致美學五子棋</p>
-                <p style="margin-bottom: 6px;"><strong>目前版本：</strong>v2.6.0</p>
+                <p style="margin-bottom: 6px;"><strong>目前版本：</strong>v2.7.0</p>
                 <p style="margin-bottom: 6px;"><strong>發布日期：</strong>2026-06-24</p>
                 <p style="margin-bottom: 12px;"><strong>開發團隊：</strong>Antigravity AI Co-Pilot & Yuki</p>
                 <hr>
-                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">🛠️ 本版本摘要 (v2.6.0)：</p>
+                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">🛠️ 本版本摘要 (v2.7.0)：</p>
                 <ul>
-                    <li>👁️ **思考過程棋盤去模擬子**：依使用者要求，AI 思考終端雖然正常更新進度與預估路徑，但不再於棋盤上顯示模擬運算過程的虛擬棋子，避免干擾畫面。</li>
+                    <li>⚡ **動態開發時間戳**：將全專案模組載入參數改為動態的開發時間戳 (timestamp)，確保每次 AI 部署更新後，瀏覽器均不會載入舊的快取。</li>
                 </ul>
                 <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-secondary);">📜 歷史版本摘要：</p>
                 <details style="margin-bottom: 12px; font-size: 0.85rem; color: var(--text-secondary);">
-                    <summary style="cursor: pointer; padding: 4px 0; color: var(--accent-primary); outline: none;">查看歷史更新歷史 (v2.5.0 及更早)</summary>
+                    <summary style="cursor: pointer; padding: 4px 0; color: var(--accent-primary); outline: none;">查看歷史更新歷史 (v2.6.0 及更早)</summary>
                     <ul style="padding-left: 16px; margin-top: 8px;">
-                        <li>🔄 **v2.5.0**：全面重構所有互相載入的 ES Modules 的快取控制參數，強制瀏覽器載入最新版本，確保修復生效。</li>
+                        <li>👁️ **v2.6.0**：依使用者要求，AI 思考終端更新進度與路徑時，不再於棋盤上繪製模擬落子的虛擬預覽子，避免畫面干擾。</li>
+                        <li>🔄 **v2.5.0**：全面重構所有互相載入的 ES Modules 的快取控制參數，強制瀏覽器載入最新版本。</li>
                         <li>🎨 **v2.4.0**：在輪到玩家落子的狀態提示中明確標註持子顏色（黑子/白子）；並修復「AI 思考終端」在困難難度下不顯示即時搜尋數據與預測路徑的 Bug。</li>
                         <li>📐 **v2.3.0**：修復了當對手出現「死四」致命威脅時，斜上 (/) 連線的提示紅線會被錯誤畫成斜下 (\) 的 Bug。現在紅線均會 100% 精準穿過威脅棋子。</li>
                         <li>👁️ **v2.2.0**：修復棋盤上最後落子視覺發光提示點遺失的 Bug；並優化 AI 雙活三與單活三防禦邏輯，強制封堵對手活四點。</li>
@@ -407,11 +408,12 @@
     <canvas id="screen-canvas" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 9999;"></canvas>
 
     <!-- Load scripts at the end -->
-    <script src="src/peerjs.min.js?v=2.6.0"></script>
-    <script src="ai.js?v=2.6.0"></script>
-    <script type="module" src="app.js?v=2.6.0"></script>
+    <script src="src/peerjs.min.js?t=1782241400388"></script>
+    <script src="ai.js?t=1782241400388"></script>
+    <script type="module" src="app.js?t=1782241400388"></script>
 </body>
 </html>
+
 
 
 
