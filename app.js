@@ -1,12 +1,12 @@
-﻿import { game, state } from './src/game.js?v=2.5.0';
-import { ui } from './src/ui.js?v=2.5.0';
-import { audio } from './src/audio.js?v=2.5.0';
-import { p2p } from './src/p2p.js?v=2.5.0';
+﻿import { game, state } from './src/game.js?v=2.6.0';
+import { ui } from './src/ui.js?v=2.6.0';
+import { audio } from './src/audio.js?v=2.6.0';
+import { p2p } from './src/p2p.js?v=2.6.0';
 
 
 
 function startApp() {
-    console.log("🚀 [App] 應用程式初始化成功。版本：2.5.0");
+    console.log("🚀 [App] 應用程式初始化成功。版本：2.6.0");
     let isUndoing = false;
     let gameSeconds = 0;
     let timerInterval = null;
@@ -1003,6 +1003,7 @@ if (document.readyState === 'loading') {
 } else {
     startApp();
 }
+
 
 
 

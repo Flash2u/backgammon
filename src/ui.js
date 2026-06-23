@@ -1,5 +1,5 @@
-﻿import { BOARD_SIZE, game } from './game.js?v=2.5.0';
-import { PUZZLES, getPuzzleProgress, completePuzzle } from './puzzle.js?v=2.5.0';
+﻿import { BOARD_SIZE, game } from './game.js?v=2.6.0';
+import { PUZZLES, getPuzzleProgress, completePuzzle } from './puzzle.js?v=2.6.0';
 
 // ==========================================================================
 // GomokuDB: IndexedDB 本地數據庫 (棋譜 & 自訂關卡)
@@ -1973,8 +1973,7 @@ export const ui = {
             if (progress.pv && progress.pv.length > 0) {
                 const movesStr = progress.pv.map(m => `(${m.r},${m.c})`).join(' ➜ ');
                 this.dom.aiMonitorPv.innerText = `預測路徑: ${movesStr}`;
-                // 在棋盤上繪製虛擬預覽子
-                this.renderVirtualAIStones(progress.pv);
+                // 依據使用者要求，不在棋盤上繪製虛擬預覽子
             } else {
                 this.dom.aiMonitorPv.innerText = '預測路徑: -';
             }
@@ -2424,6 +2423,7 @@ export const ui = {
         this.renderPuzzleLevels();
     }
 };
+
 
 
 
