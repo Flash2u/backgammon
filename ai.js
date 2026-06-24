@@ -414,6 +414,11 @@
         const playerColor = 3 - aiColor;
         let score = 0;
 
+        const aiThreeSpots = new Map();
+        const aiFourSpots = new Map();
+        const playerThreeSpots = new Map();
+        const playerFourSpots = new Map();
+
         for (let i = 0; i < SEGMENTS.length; i++) {
             const seg = SEGMENTS[i];
             
@@ -425,7 +430,87 @@
             
             score += aiScore;
             score -= playerScore * 1.5; // 提高對手得分的權重，主動防守
+
+            // 統計 AI 的威脅點 (活三得分 >= 15000 且 < 80000; 活四/衝四得分 >= 80000)
+            if (aiScore >= 80000) {
+                for (let k = 0; k < 5; k++) {
+                    const r = seg[k][0];
+                    const c = seg[k][1];
+                    if (board[r][c] === 0) {
+                        const key = r * 15 + c;
+                        aiFourSpots.set(key, (aiFourSpots.get(key) || 0) + 1);
+                    }
+                }
+            } else if (aiScore >= 15000) {
+                for (let k = 0; k < 5; k++) {
+                    const r = seg[k][0];
+                    const c = seg[k][1];
+                    if (board[r][c] === 0) {
+                        const key = r * 15 + c;
+                        aiThreeSpots.set(key, (aiThreeSpots.get(key) || 0) + 1);
+                    }
+                }
+            }
+
+            // 統計玩家的威脅點
+            if (playerScore >= 80000) {
+                for (let k = 0; k < 5; k++) {
+                    const r = seg[k][0];
+                    const c = seg[k][1];
+                    if (board[r][c] === 0) {
+                        const key = r * 15 + c;
+                        playerFourSpots.set(key, (playerFourSpots.get(key) || 0) + 1);
+                    }
+                }
+            } else if (playerScore >= 15000) {
+                for (let k = 0; k < 5; k++) {
+                    const r = seg[k][0];
+                    const c = seg[k][1];
+                    if (board[r][c] === 0) {
+                        const key = r * 15 + c;
+                        playerThreeSpots.set(key, (playerThreeSpots.get(key) || 0) + 1);
+                    }
+                }
+            }
         }
+
+        // 計算交叉棋型加分與防守扣分
+        const threatKeys = new Set([
+            ...aiThreeSpots.keys(),
+            ...aiFourSpots.keys(),
+            ...playerThreeSpots.keys(),
+            ...playerFourSpots.keys()
+        ]);
+
+        for (const key of threatKeys) {
+            const ai3 = aiThreeSpots.get(key) || 0;
+            const ai4 = aiFourSpots.get(key) || 0;
+            const p3 = playerThreeSpots.get(key) || 0;
+            const p4 = playerFourSpots.get(key) || 0;
+
+            // AI 的交叉棋型加分
+            if (ai3 >= 2) {
+                score += 150000; // 雙活三
+            }
+            if (ai3 >= 1 && ai4 >= 1) {
+                score += 300000; // 三四
+            }
+            if (ai4 >= 2) {
+                score += 100000; // 雙四
+            }
+
+            // 玩家的交叉棋型扣分 (防守加分)
+            if (p3 >= 2) {
+                score -= 240000; // 雙活三防守 (150000 * 1.6)
+            }
+            if (p3 >= 1 && p4 >= 1) {
+                score -= 480000; // 三四防守 (300000 * 1.6)
+            }
+            if (p4 >= 2) {
+                score -= 160000; // 雙四防守 (100000 * 1.6)
+            }
+        }
+
         return score;
     }
 
@@ -435,6 +520,11 @@
         let score = 0;
         const segIndices = CELL_TO_SEGMENTS[r][c];
 
+        let myThreeCount = 0;
+        let myFourCount = 0;
+        let oppThreeCount = 0;
+        let oppFourCount = 0;
+
         for (let i = 0; i < segIndices.length; i++) {
             const seg = SEGMENTS[segIndices[i]];
             
@@ -443,13 +533,35 @@
             const myScore = evaluateSegmentPattern(seg, color, board);
             board[r][c] = 0;
             
+            if (myScore >= 80000) {
+                myFourCount++;
+            } else if (myScore >= 15000) {
+                myThreeCount++;
+            }
+            
             // 模擬對手落子 (阻礙分數)
             board[r][c] = oppColor;
             const oppScore = evaluateSegmentPattern(seg, oppColor, board);
             board[r][c] = 0;
             
+            if (oppScore >= 80000) {
+                oppFourCount++;
+            } else if (oppScore >= 15000) {
+                oppThreeCount++;
+            }
+            
             score += myScore + oppScore * 1.2;
         }
+
+        // 著法排序中的交叉棋型加分
+        if (myThreeCount >= 2) score += 150000; // 雙活三
+        if (myThreeCount >= 1 && myFourCount >= 1) score += 300000; // 三四
+        if (myFourCount >= 2) score += 100000; // 雙四
+
+        if (oppThreeCount >= 2) score += 180000; // 防守雙活三 (150000 * 1.2)
+        if (oppThreeCount >= 1 && oppFourCount >= 1) score += 360000; // 防守三四
+        if (oppFourCount >= 2) score += 120000; // 防守雙四
+
         return score;
     }
 
@@ -1417,6 +1529,7 @@
     global.GomokuAI = GomokuAI;
 
 })(typeof window !== 'undefined' ? window : self);
+
 
 
 
