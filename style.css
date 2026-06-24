@@ -245,25 +245,87 @@ body.theme-slate .app-title span {
     margin-top: 4px;
 }
 
+/* 預設佈局 (單欄佈局，適用於所有直屏、手機與平板直向) */
 .game-layout {
-    display: grid;
-    grid-template-columns: 350px 1fr;
-    gap: 32px;
-    align-items: start;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
 }
 
-@media (max-width: 968px) {
+.sidebar-panel {
+    display: contents; /* 讓子卡片能夠直接參與外部 Flex 排序 */
+}
+
+/* 各個卡片的預設 Flex 排序與寬度 */
+.status-card {
+    order: 1;
+    width: 100%;
+    max-width: 620px;
+}
+
+.board-container {
+    order: 2;
+    width: 100%;
+    max-width: min(90vw, calc(100vh - 270px));
+    aspect-ratio: 1 / 1;
+    margin: 0 auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.config-card { order: 3; width: 100%; max-width: 620px; }
+.ops-card { order: 4; width: 100%; max-width: 620px; }
+.stats-card { order: 5; width: 100%; max-width: 620px; }
+.sgf-library-card { order: 6; width: 100%; max-width: 620px; }
+.puzzle-editor-card { order: 7; width: 100%; max-width: 620px; }
+.puzzle-card { order: 8; width: 100%; max-width: 620px; }
+.replay-card { order: 9; width: 100%; max-width: 620px; }
+.p2p-card { order: 10; width: 100%; max-width: 620px; }
+.ai-monitor-card { order: 11; width: 100%; max-width: 620px; }
+
+/* 只有在大於 968px 寬度且橫屏下，才套用雙欄佈局 (iPad 橫向、電腦端等) */
+@media (min-width: 969px) and (orientation: landscape) {
     .game-layout {
-        grid-template-columns: 1fr;
-        gap: 24px;
+        display: grid;
+        grid-template-columns: 350px 1fr;
+        gap: 32px;
+        align-items: start;
+        width: 100%;
     }
     
     .sidebar-panel {
-        order: 2;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        width: 100%;
+        max-width: none;
+    }
+    
+    /* 恢復橫屏下的預設 card 寬度 */
+    .status-card, .config-card, .ops-card, .stats-card,
+    .sgf-library-card, .puzzle-editor-card, .puzzle-card,
+    .replay-card, .p2p-card, .ai-monitor-card {
+        order: unset;
+        max-width: none;
+        width: 100%;
     }
     
     .board-container {
-        order: 1;
+        order: unset;
+        position: sticky;
+        top: 24px;
+        max-height: calc(100vh - 120px);
+        width: 100%;
+        max-width: none;
+        margin: 0;
+    }
+    
+    .board-wrapper {
+        max-width: min(calc(100vh - 160px), 800px);
+        width: 100%;
     }
 }
 
@@ -586,7 +648,7 @@ body.theme-slate .stat-item {
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
     transition: all 0.5s ease;
     width: 100%;
-    max-width: 620px;
+    max-width: 100%; /* 直向由 container 限制，橫向由 media query 限制 */
     aspect-ratio: 1 / 1;
     pointer-events: auto; /* 確保棋盤及子元素可點擊 */
     position: relative; /* 確保偽元素絕對定位 */
@@ -2095,6 +2157,69 @@ body.theme-slate .forbidden-marker {
 .threat-canvas {
     pointer-events: none;
     mix-blend-mode: screen;
+}
+
+/* ==========================================================================
+   PORTRAIT ONLY OVERLAY FOR MOBILE DEVICES (v3.3.0)
+   ========================================================================== */
+.portrait-only-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(10, 15, 30, 0.98);
+    z-index: 100000;
+    justify-content: center;
+    align-items: center;
+    color: var(--text-primary);
+    text-align: center;
+    padding: 24px;
+}
+
+.portrait-overlay-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.rotate-device-icon {
+    font-size: 4.5rem;
+    filter: drop-shadow(0 0 15px var(--accent));
+    animation: rotateMobile 2.5s infinite ease-in-out;
+}
+
+.rotate-device-text {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: var(--text-primary);
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
+}
+
+@keyframes rotateMobile {
+    0% {
+        transform: rotate(0deg);
+    }
+    40% {
+        transform: rotate(-90deg);
+    }
+    60% {
+        transform: rotate(-90deg);
+    }
+    100% {
+        transform: rotate(0deg);
+    }
+}
+
+/* 偵測手機橫放 (寬度小於 969px 且為橫向模式) */
+@media (max-width: 968px) and (orientation: landscape) {
+    .portrait-only-overlay {
+        display: flex;
+    }
 }
 
 
