@@ -1,4 +1,4 @@
-﻿import { state } from './game.js?t=1782322487309';
+﻿import { state } from './game.js?t=1782323574760';
 
 let peer = null;
 let p2pConn = null;
@@ -33,7 +33,7 @@ let callbacks = {
 export const p2p = {
     init(cbs) {
         callbacks = { ...callbacks, ...cbs };
-        console.log("🚀 [P2P] 模組初始化成功。版本：2.9.0 (方案 A 直連/TURN版)");
+        console.log("🚀 [P2P] 模組初始化成功。版本：3.0.0 (方案 A 直連/TURN版)");
 
         if (typeof Peer === 'undefined') {
             callbacks.onStatusChange('❌ 無法載入 P2P 模組', '#ef4444');
@@ -284,6 +284,24 @@ export const p2p = {
     sendMessage(msg) {
         if (p2pConn && p2pConn.open) {
             p2pConn.send(msg);
+        }
+    },
+
+    broadcast(msg) {
+        // 發送給主要對手
+        this.sendMessage(msg);
+        
+        // 發送給所有已連接的觀戰者
+        if (spectatorConns && spectatorConns.length > 0) {
+            spectatorConns.forEach(conn => {
+                if (conn && conn.open) {
+                    try {
+                        conn.send(msg);
+                    } catch (e) {
+                        console.error('Failed to broadcast to spectator:', e);
+                    }
+                }
+            });
         }
     },
 
@@ -572,6 +590,7 @@ export const p2p = {
         return isRoomHost;
     }
 };
+
 
 
 

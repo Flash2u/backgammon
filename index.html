@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>極致美學五子棋 - Cyber Gomoku</title>
-    <link rel="stylesheet" href="style.css?t=1782322487309">
+    <link rel="stylesheet" href="style.css?t=1782323574760">
     <!-- Google Fonts: Inter & Outfit for modern look -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -356,18 +356,19 @@
             <h2 class="modal-title">關於遊戲</h2>
             <div class="modal-scroll-area">
                 <p style="margin-bottom: 12px; font-weight: 600; text-align: center; font-size: 1rem; color: var(--text-primary);">🌌 Cyber Gomoku - 極致美學五子棋</p>
-                <p style="margin-bottom: 6px;"><strong>目前版本：</strong>v2.9.0</p>
+                <p style="margin-bottom: 6px;"><strong>目前版本：</strong>v3.0.0</p>
                 <p style="margin-bottom: 6px;"><strong>發布日期：</strong>2026-06-25</p>
                 <p style="margin-bottom: 12px;"><strong>開發團隊：</strong>Antigravity AI Co-Pilot & Yuki</p>
                 <hr>
-                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">🛠️ 本版本摘要 (v2.9.0)：</p>
+                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">🛠️ 本版本摘要 (v3.0.0)：</p>
                 <ul>
-                    <li>🧠 **困難 AI 交叉棋型聯合評估**：實作非線性交叉棋型加權演算法，讓 AI 能夠敏銳地察覺並主動進行「雙活三」、「三四（活三+衝四）」、「雙四」等極具威脅的交叉進攻佈局，並能第一時間精準防守玩家的交叉棋型。同時優化著法排序，大幅提升剪枝效率與思考速度！</li>
+                    <li>🔌 **P2P 對戰致命 Bug 修復**：修復了因 `p2p.broadcast` 方法缺失而導致發起方落子後連線同步崩潰、接收端一直卡在「等待對方落子中」的致命錯誤。現在聯機對戰已完全恢復正常！</li>
                 </ul>
                 <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-secondary);">📜 歷史版本摘要：</p>
                 <details style="margin-bottom: 12px; font-size: 0.85rem; color: var(--text-secondary);">
-                    <summary style="cursor: pointer; padding: 4px 0; color: var(--accent-primary); outline: none;">查看歷史更新歷史 (v2.8.0 及更早)</summary>
+                    <summary style="cursor: pointer; padding: 4px 0; color: var(--accent-primary); outline: none;">查看歷史更新歷史 (v2.9.0 及更早)</summary>
                     <ul style="padding-left: 16px; margin-top: 8px;">
+                        <li>🧠 **v2.9.0**：實作非線性交叉棋型加權評估演算法（雙活三、三四、雙四），並大幅優化著法排序，使困難 AI 中局戰略佈局與剪枝效能提升至全新高度。</li>
                         <li>🧠 **v2.8.0**：實作置換表剪枝精準度修復、區段局部棋型判斷（精確識別活/死三與衝/活四）、搜尋剪枝優化（空步與無用剪枝）、向量對稱動態開局庫（秒發必勝花月）、以及 VCT 搜尋置換表快取與著法排序。AI 實力達到專業段位水準！</li>
                         <li>⚡ **v2.7.0**：將全專案模組載入參數改為動態開發時間戳 (timestamp)，防止強快取。</li>
                         <li>👁️ **v2.6.0**：依使用者要求，AI 思考終端更新進度與路徑時，不再於棋盤上繪製模擬落子的虛擬預覽子，避免畫面干擾。</li>
@@ -410,11 +411,12 @@
     <canvas id="screen-canvas" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 9999;"></canvas>
 
     <!-- Load scripts at the end -->
-    <script src="src/peerjs.min.js?t=1782322487309"></script>
-    <script src="ai.js?t=1782322487309"></script>
-    <script type="module" src="app.js?t=1782322487309"></script>
+    <script src="src/peerjs.min.js?t=1782323574760"></script>
+    <script src="ai.js?t=1782323574760"></script>
+    <script type="module" src="app.js?t=1782323574760"></script>
 </body>
 </html>
+
 
 
 
