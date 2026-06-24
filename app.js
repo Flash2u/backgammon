@@ -1,12 +1,12 @@
-﻿import { game, state } from './src/game.js?t=1782323574760';
-import { ui } from './src/ui.js?t=1782323574760';
-import { audio } from './src/audio.js?t=1782323574760';
-import { p2p } from './src/p2p.js?t=1782323574760';
+﻿import { game, state } from './src/game.js?t=1782323992685';
+import { ui } from './src/ui.js?t=1782323992685';
+import { audio } from './src/audio.js?t=1782323992685';
+import { p2p } from './src/p2p.js?t=1782323992685';
 
 
 
 function startApp() {
-    console.log("🚀 [App] 應用程式初始化成功。版本：3.0.0");
+    console.log("🚀 [App] 應用程式初始化成功。版本：3.1.0");
     let isUndoing = false;
     let gameSeconds = 0;
     let timerInterval = null;
@@ -221,7 +221,7 @@ function startApp() {
         executeMove(r, c);
     }
 
-    function executeMove(r, c) {
+    function executeMove(r, c, isRemote = false) {
         const activeColor = state.currentTurn;
         
         // 播放落子音效與繪製棋子
@@ -237,8 +237,8 @@ function startApp() {
         // 更新遊戲核心狀態
         const result = game.makeMove(r, c, activeColor);
 
-        // 如果是 P2P 連線對戰，將落子同步廣播給對手與觀戰者，並附帶盤面唯一的 Zobrist 哈希值
-        if (state.gameMode === 'p2p' && p2p.isConnected()) {
+        // 如果是 P2P 連線對戰且非遠端同步落子，將落子同步廣播給對手與觀戰者，並附帶盤面唯一的 Zobrist 哈希值
+        if (state.gameMode === 'p2p' && p2p.isConnected() && !isRemote) {
             p2p.broadcast({
                 type: 'move',
                 r: r,
@@ -490,7 +490,7 @@ function startApp() {
                         }
                     }
 
-                    executeMove(data.r, data.c);
+                    executeMove(data.r, data.c, true);
 
                     // 2. 哈希一致性校驗與自愈
                     const localHash = game.getBoardHash();
@@ -1003,6 +1003,7 @@ if (document.readyState === 'loading') {
 } else {
     startApp();
 }
+
 
 
 
