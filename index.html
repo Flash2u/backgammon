@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>極致美學五子棋 - Cyber Gomoku</title>
-    <link rel="stylesheet" href="style.css?t=1782323992685">
+    <link rel="stylesheet" href="style.css?t=1782324089511">
     <!-- Google Fonts: Inter & Outfit for modern look -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -356,18 +356,19 @@
             <h2 class="modal-title">關於遊戲</h2>
             <div class="modal-scroll-area">
                 <p style="margin-bottom: 12px; font-weight: 600; text-align: center; font-size: 1rem; color: var(--text-primary);">🌌 Cyber Gomoku - 極致美學五子棋</p>
-                <p style="margin-bottom: 6px;"><strong>目前版本：</strong>v3.1.0</p>
+                <p style="margin-bottom: 6px;"><strong>目前版本：</strong>v3.2.0</p>
                 <p style="margin-bottom: 6px;"><strong>發布日期：</strong>2026-06-25</p>
-                <p style="margin-bottom: 12px;"><strong>開發團隊：</strong>Antigravity AI Co-Pilot & Yuki</p>
+                <p style="margin-bottom: 12px;"><strong>開發團隊：</strong>Flash2u</p>
                 <hr>
-                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">🛠️ 本版本摘要 (v3.1.0)：</p>
+                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">🛠️ 本版本摘要 (v3.2.0)：</p>
                 <ul>
-                    <li>🔌 **P2P 對戰作弊誤判 Bug 修復**：修復了接收端收到落子後重複將訊息廣播回傳，造成發起端在自己已有棋子的格子上重複處理落子、進而觸發「覆蓋棋子作弊」並自動中斷連線的 Bug。現在聯機對戰已 100% 流暢！</li>
+                    <li>👤 **開發團隊名稱更新**：更新關於遊戲面板中的開發團隊名稱為 Flash2u，並同步升級應用程式與 P2P 通訊模組版本。</li>
                 </ul>
                 <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-secondary);">📜 歷史版本摘要：</p>
                 <details style="margin-bottom: 12px; font-size: 0.85rem; color: var(--text-secondary);">
-                    <summary style="cursor: pointer; padding: 4px 0; color: var(--accent-primary); outline: none;">查看歷史更新歷史 (v3.0.0 及更早)</summary>
+                    <summary style="cursor: pointer; padding: 4px 0; color: var(--accent-primary); outline: none;">查看歷史更新歷史 (v3.1.0 及更早)</summary>
                     <ul style="padding-left: 16px; margin-top: 8px;">
+                        <li>🔌 **v3.1.0**：修復接收端收到落子後重複將訊息廣播回傳，造成發起端在自己已有棋子的格子上重複處理落子、進而觸發「覆蓋棋子作弊」並自動中斷連線的 Bug。</li>
                         <li>🔌 **v3.0.0**：修復因 `p2p.broadcast` 方法缺失導致連線對戰點擊落子後卡死在等待狀態的嚴重 Bug。</li>
                         <li>🧠 **v2.9.0**：實作非線性交叉棋型加權評估演算法（雙活三、三四、雙四），並大幅優化著法排序，使困難 AI 中局戰略佈局與剪枝效能提升至全新高度。</li>
                         <li>🧠 **v2.8.0**：實作置換表剪枝精準度修復、區段局部棋型判斷（精確識別活/死三與衝/活四）、搜尋剪枝優化（空步與無用剪枝）、向量對稱動態開局庫（秒發必勝花月）、以及 VCT 搜尋置換表快取與著法排序。AI 實力達到專業段位水準！</li>
@@ -412,11 +413,12 @@
     <canvas id="screen-canvas" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 9999;"></canvas>
 
     <!-- Load scripts at the end -->
-    <script src="src/peerjs.min.js?t=1782323992685"></script>
-    <script src="ai.js?t=1782323992685"></script>
-    <script type="module" src="app.js?t=1782323992685"></script>
+    <script src="src/peerjs.min.js?t=1782324089511"></script>
+    <script src="ai.js?t=1782324089511"></script>
+    <script type="module" src="app.js?t=1782324089511"></script>
 </body>
 </html>
+
 
 
 
