@@ -153,6 +153,7 @@ body.theme-slate {
 body {
     background: linear-gradient(135deg, var(--bg-1), var(--bg-2));
     min-height: 100vh;
+    width: 100%;
     color: var(--text-primary);
     display: flex;
     justify-content: center;
@@ -197,6 +198,7 @@ body:not(.theme-neon) .bg-glow {
 
 .app-container {
     width: 100%;
+    flex-grow: 1;
     max-width: 1200px;
     padding: 24px;
     display: flex;
@@ -286,48 +288,7 @@ body.theme-slate .app-title span {
 .p2p-card { order: 10; width: 100%; max-width: 620px; }
 .ai-monitor-card { order: 11; width: 100%; max-width: 620px; }
 
-/* 只有在大於 968px 寬度且橫屏下，才套用雙欄佈局 (iPad 橫向、電腦端等) */
-@media (min-width: 969px) and (orientation: landscape) {
-    .game-layout {
-        display: grid;
-        grid-template-columns: 350px 1fr;
-        gap: 32px;
-        align-items: start;
-        width: 100%;
-    }
-    
-    .sidebar-panel {
-        display: flex;
-        flex-direction: column;
-        gap: 18px;
-        width: 100%;
-        max-width: none;
-    }
-    
-    /* 恢復橫屏下的預設 card 寬度 */
-    .status-card, .config-card, .ops-card, .stats-card,
-    .sgf-library-card, .puzzle-editor-card, .puzzle-card,
-    .replay-card, .p2p-card, .ai-monitor-card {
-        order: unset;
-        max-width: none;
-        width: 100%;
-    }
-    
-    .board-container {
-        order: unset;
-        position: sticky;
-        top: 24px;
-        max-height: calc(100vh - 120px);
-        width: 100%;
-        max-width: none;
-        margin: 0;
-    }
-    
-    .board-wrapper {
-        max-width: min(calc(100vh - 160px), 800px);
-        width: 100%;
-    }
-}
+/* 雙欄橫向媒體查詢移至檔案底部以防覆蓋 */
 
 /* ==========================================================================
    SIDEBAR & GLASS CARDS
@@ -2051,39 +2012,7 @@ body.theme-slate .forbidden-marker {
     margin-top: 8px;
 }
 
-@media (max-width: 600px) {
-    .app-container {
-        padding: 8px !important;
-        gap: 8px !important;
-    }
-    
-    .app-title {
-        font-size: 1.8rem !important;
-        letter-spacing: 2px !important;
-    }
-    
-    .board-container {
-        max-width: min(96vw, calc(100vh - 230px)) !important;
-    }
-    
-    .board-wrapper {
-        padding: 6px !important;
-        border-radius: 12px !important;
-        border-width: 3px !important;
-        max-width: 100% !important;
-    }
-    
-    .modal-content, #about-modal .modal-content {
-        width: 90% !important;
-        max-width: calc(100% - 32px) !important;
-        padding: 24px 16px !important;
-    }
-    
-    /* 3D 傾角在窄螢幕上略微減小，防止邊角溢出 */
-    .board-wrapper.view-3d {
-        transform: rotateX(24deg) rotateY(calc(var(--light-x, 0) * 2deg)) rotateZ(-8deg) translateY(-5px) !important;
-    }
-}
+/* 手機直屏小螢幕媒體查詢移至檔案底部以防覆蓋 */
 
 /* ==========================================================================
    SGF LIBRARY & PUZZLE EDITOR & CANVASES
@@ -2241,7 +2170,104 @@ body.theme-slate .forbidden-marker {
     }
 }
 
+/* ==========================================================================
+   RESPONSIVE MEDIA QUERIES (v3.7.0)
+   ========================================================================== */
 
+/* 雙欄橫向媒體查詢（適用於 iPad 橫放、PC 橫放，寬度 >= 969px 且為橫屏） */
+@media (min-width: 969px) and (orientation: landscape) {
+    .game-layout {
+        display: grid;
+        grid-template-columns: 360px 1fr; /* 左側面板 360px，右側棋盤 1fr */
+        gap: 24px;
+        align-items: start;
+        width: 100%;
+    }
+    
+    .sidebar-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        width: 100%;
+        max-width: none;
+    }
+    
+    /* 恢復橫屏下的預設卡片寬度 */
+    .status-card, .config-card, .ops-card, .stats-card,
+    .sgf-library-card, .puzzle-editor-card, .puzzle-card,
+    .replay-card, .p2p-card, .ai-monitor-card {
+        max-width: none;
+        width: 100%;
+    }
+    
+    /* 微調左側卡片排序，將常用卡片（狀態、控制）置頂，避免被高設定卡片擠下去 */
+    .status-card { order: 1; }
+    .ops-card { order: 2; }
+    .config-card { order: 3; }
+    .sgf-library-card { order: 4; }
+    .puzzle-editor-card { order: 5; }
+    .puzzle-card { order: 6; }
+    .replay-card { order: 7; }
+    .p2p-card { order: 8; }
+    .ai-monitor-card { order: 9; }
+    
+    .board-container {
+        order: unset;
+        position: sticky;
+        top: 16px;
+        max-height: calc(100vh - 80px);
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .board-wrapper {
+        max-width: min(calc(100vh - 120px), 800px); /* 限制棋盤高度防滾動，並在右側最大化 */
+        width: 100%;
+    }
+}
 
-
+/* 手機直向媒體查詢（適用於 iPhone 等直立窄螢幕，寬度 <= 600px） */
+@media (max-width: 600px) {
+    .app-container {
+        padding: 8px 4px !important; /* 左右邊距縮減至 4px */
+        gap: 8px !important;
+    }
+    
+    .app-title {
+        font-size: 1.8rem !important;
+        letter-spacing: 2px !important;
+    }
+    
+    .glass-card {
+        padding: 12px !important; /* 卡片邊距縮小至 12px */
+        border-radius: 12px !important; /* 邊角微調 */
+    }
+    
+    .board-container {
+        max-width: min(100vw, calc(100vh - 230px)) !important; /* 直立最大化 */
+        width: 100% !important;
+    }
+    
+    .board-wrapper {
+        padding: 6px !important; /* 縮小邊距讓棋格變大 */
+        border-radius: 12px !important;
+        border-width: 3px !important;
+        max-width: 100% !important;
+    }
+    
+    .modal-content, #about-modal .modal-content {
+        width: 92% !important;
+        max-width: calc(100% - 24px) !important;
+        padding: 20px 14px !important;
+    }
+    
+    /* 3D 傾角微調 */
+    .board-wrapper.view-3d {
+        transform: rotateX(24deg) rotateY(calc(var(--light-x, 0) * 2deg)) rotateZ(-8deg) translateY(-5px) !important;
+    }
+}
 
