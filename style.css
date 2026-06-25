@@ -334,9 +334,7 @@ body.theme-slate .app-title span {
    ========================================================================== */
 
 .sidebar-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
+    display: contents;
 }
 
 .glass-card {
@@ -2045,8 +2043,8 @@ body.theme-slate .forbidden-marker {
 
 @media (max-width: 600px) {
     .app-container {
-        padding: 12px !important;
-        gap: 12px !important;
+        padding: 8px !important;
+        gap: 8px !important;
     }
     
     .app-title {
@@ -2054,10 +2052,15 @@ body.theme-slate .forbidden-marker {
         letter-spacing: 2px !important;
     }
     
+    .board-container {
+        max-width: min(96vw, calc(100vh - 230px)) !important;
+    }
+    
     .board-wrapper {
-        padding: 8px !important;
+        padding: 6px !important;
         border-radius: 12px !important;
         border-width: 3px !important;
+        max-width: 100% !important;
     }
     
     /* 3D 傾角在窄螢幕上略微減小，防止邊角溢出 */

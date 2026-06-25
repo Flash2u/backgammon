@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>極致美學五子棋 - Cyber Gomoku</title>
-    <link rel="stylesheet" href="style.css?t=1782339351000">
+    <link rel="stylesheet" href="style.css?t=1782410803000">
     <!-- Google Fonts: Inter & Outfit for modern look -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -46,6 +46,7 @@
                         <span class="timer-icon">⏱️</span>
                         <span id="game-timer">00:00</span>
                     </div>
+                    <button id="btn-start" class="btn-primary" style="margin-top: 16px; width: 100%;">重新開始</button>
                 </div>
 
                 <!-- Setup Card -->
@@ -117,8 +118,7 @@
 
                 <!-- Operations Card -->
                 <div class="glass-card ops-card">
-                    <button id="btn-start" class="btn-primary">重新開始</button>
-                    <div class="btn-row">
+                    <div class="btn-row" style="margin-top: 0;">
                         <button id="btn-undo" class="btn-secondary" disabled>
                             <span class="btn-icon">↩️</span> 悔棋
                         </button>
@@ -364,18 +364,19 @@
             <h2 class="modal-title">關於遊戲</h2>
             <div class="modal-scroll-area">
                 <p style="margin-bottom: 12px; font-weight: 600; text-align: center; font-size: 1rem; color: var(--text-primary);">🌌 Cyber Gomoku - 極致美學五子棋</p>
-                <p style="margin-bottom: 6px;"><strong>目前版本：</strong>v3.3.0</p>
+                <p style="margin-bottom: 6px;"><strong>目前版本：</strong>v3.4.0</p>
                 <p style="margin-bottom: 6px;"><strong>發布日期：</strong>2026-06-25</p>
                 <p style="margin-bottom: 12px;"><strong>開發團隊：</strong>Flash2u</p>
                 <hr>
-                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">🛠️ 本版本摘要 (v3.3.0)：</p>
+                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">🛠️ 本版本摘要 (v3.4.0)：</p>
                 <ul>
-                    <li>📱 **響應式佈局與顯示最佳化**：調整平板與手機的直橫向畫面，使首屏完美容納標題、狀態及最大化棋盤，並新增手機橫置提示畫面，提供極致的操作體驗。</li>
+                    <li>📱 **手機直屏超滿版與按鈕控制重構**：將重新開始按鈕直接移入「遊戲狀態卡」下方，使狀態與主控按鈕自然銜接在棋盤上方；並極致放大手機版棋盤寬度至 96vw，兩側實現無縫滿版。</li>
                 </ul>
                 <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-secondary);">📜 歷史版本摘要：</p>
                 <details style="margin-bottom: 12px; font-size: 0.85rem; color: var(--text-secondary);">
-                    <summary style="cursor: pointer; padding: 4px 0; color: var(--accent-primary); outline: none;">查看歷史更新歷史 (v3.2.0 及更早)</summary>
+                    <summary style="cursor: pointer; padding: 4px 0; color: var(--accent-primary); outline: none;">查看歷史更新歷史 (v3.3.0 及更早)</summary>
                     <ul style="padding-left: 16px; margin-top: 8px;">
+                        <li>📱 **v3.3.0**：調整平板與手機的直橫向畫面，使首屏完美容納標題、狀態及最大化棋盤，並新增手機橫置提示畫面。</li>
                         <li>👤 **v3.2.0**：更新關於遊戲面板中的開發團隊名稱為 Flash2u，並同步升級應用程式與 P2P 通訊模組版本。</li>
                         <li>🔌 **v3.1.0**：修復接收端收到落子後重複將訊息廣播回傳，造成發起端在自己已有棋子的格子上重複處理落子、進而觸發「覆蓋棋子作弊」並自動中斷連線的 Bug。</li>
                         <li>🔌 **v3.0.0**：修復因 `p2p.broadcast` 方法缺失導致連線對戰點擊落子後卡死在等待狀態的嚴重 Bug。</li>
@@ -422,9 +423,9 @@
     <canvas id="screen-canvas" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 9999;"></canvas>
 
     <!-- Load scripts at the end -->
-    <script src="src/peerjs.min.js?t=1782339351000"></script>
-    <script src="ai.js?t=1782339351000"></script>
-    <script type="module" src="app.js?t=1782339351000"></script>
+    <script src="src/peerjs.min.js?t=1782410803000"></script>
+    <script src="ai.js?t=1782410803000"></script>
+    <script type="module" src="app.js?t=1782410803000"></script>
 </body>
 </html>
 
