@@ -5,7 +5,7 @@
  */
 
 // 載入 AI 演算法核心庫
-importScripts('ai.js?t=1782441000000');
+importScripts('ai.js?t=1782441600000');
 
 self.onmessage = function(e) {
     const { board, aiColor, difficulty, rulesEnabled } = e.data;

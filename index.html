@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>極致美學五子棋 - Cyber Gomoku</title>
-    <link rel="stylesheet" href="style.css?t=1782441000000">
+    <link rel="stylesheet" href="style.css?t=1782441600000">
     <!-- Google Fonts: Inter & Outfit for modern look -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -364,18 +364,19 @@
             <h2 class="modal-title">關於遊戲</h2>
             <div class="modal-scroll-area">
                 <p style="margin-bottom: 12px; font-weight: 600; text-align: center; font-size: 1rem; color: var(--text-primary);">🌌 Cyber Gomoku - 極致美學五子棋</p>
-                <p style="margin-bottom: 6px;"><strong>目前版本：</strong>v3.7.0</p>
-                <p style="margin-bottom: 6px;"><strong>發布日期：</strong>2026-06-25</p>
+                <p style="margin-bottom: 6px;"><strong>目前版本：</strong>v3.7.1</p>
+                <p style="margin-bottom: 6px;"><strong>發布日期：</strong>2026-06-26</p>
                 <p style="margin-bottom: 12px;"><strong>開發團隊：</strong>Flash2u</p>
                 <hr>
-                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">🛠️ 本版本摘要 (v3.7.0)：</p>
+                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">🛠️ 本版本摘要 (v3.7.1)：</p>
                 <ul>
-                    <li>📱 **手機直屏超滿版與平板橫向佈局修復**：修復了因 CSS 順序衝突導致平板橫向時側邊欄 display 設定失效的 Bug，使棋盤成功回到右側主要區域；並防止手機版 Flex 寬度收縮，卡片 padding 縮小至 12px，榨乾可用螢幕寬度。</li>
+                    <li>📱 **平板直立面板對齊與橫向限寬**：優化平板直立時控制面板的最大寬度與棋盤寬度完全一致，使左右邊界完美對齊拉滿；並確保橫向雙欄下限制左側面板寬度，將最大寬度留給棋盤展示。</li>
                 </ul>
                 <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-secondary);">📜 歷史版本摘要：</p>
                 <details style="margin-bottom: 12px; font-size: 0.85rem; color: var(--text-secondary);">
-                    <summary style="cursor: pointer; padding: 4px 0; color: var(--accent-primary); outline: none;">查看歷史更新歷史 (v3.6.0 及更早)</summary>
+                    <summary style="cursor: pointer; padding: 4px 0; color: var(--accent-primary); outline: none;">查看歷史更新歷史 (v3.7.0 及更早)</summary>
                     <ul style="padding-left: 16px; margin-top: 8px;">
+                        <li>📱 **v3.7.0**：修復平板橫向側邊欄覆蓋順序 Bug 使棋盤成功居右最大化，並極致優化手機直向邊距拉伸寬度。</li>
                         <li>📱 **v3.6.0**：將遮罩改為四向邊緣拉伸，解決 100vw 行動端偏右切邊問題。</li>
                         <li>📱 **v3.5.0**：優化了開局引導提示（board-start-toast）自動折行，解決窄螢幕溢出。</li>
                         <li>📱 **v3.4.0**：重新開始按鈕移入「遊戲狀態卡」下方，並將手機直屏棋盤寬度極致放大至 96vw。</li>
@@ -426,9 +427,9 @@
     <canvas id="screen-canvas" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 9999;"></canvas>
 
     <!-- Load scripts at the end -->
-    <script src="src/peerjs.min.js?t=1782441000000"></script>
-    <script src="ai.js?t=1782441000000"></script>
-    <script type="module" src="app.js?t=1782441000000"></script>
+    <script src="src/peerjs.min.js?t=1782441600000"></script>
+    <script src="ai.js?t=1782441600000"></script>
+    <script type="module" src="app.js?t=1782441600000"></script>
 </body>
 </html>
 

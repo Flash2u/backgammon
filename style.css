@@ -264,7 +264,7 @@ body.theme-slate .app-title span {
 .status-card {
     order: 1;
     width: 100%;
-    max-width: 620px;
+    max-width: min(90vw, calc(100vh - 270px));
 }
 
 .board-container {
@@ -278,15 +278,15 @@ body.theme-slate .app-title span {
     align-items: center;
 }
 
-.config-card { order: 3; width: 100%; max-width: 620px; }
-.ops-card { order: 4; width: 100%; max-width: 620px; }
-.stats-card { order: 5; width: 100%; max-width: 620px; }
-.sgf-library-card { order: 6; width: 100%; max-width: 620px; }
-.puzzle-editor-card { order: 7; width: 100%; max-width: 620px; }
-.puzzle-card { order: 8; width: 100%; max-width: 620px; }
-.replay-card { order: 9; width: 100%; max-width: 620px; }
-.p2p-card { order: 10; width: 100%; max-width: 620px; }
-.ai-monitor-card { order: 11; width: 100%; max-width: 620px; }
+.config-card { order: 3; width: 100%; max-width: min(90vw, calc(100vh - 270px)); }
+.ops-card { order: 4; width: 100%; max-width: min(90vw, calc(100vh - 270px)); }
+.stats-card { order: 5; width: 100%; max-width: min(90vw, calc(100vh - 270px)); }
+.sgf-library-card { order: 6; width: 100%; max-width: min(90vw, calc(100vh - 270px)); }
+.puzzle-editor-card { order: 7; width: 100%; max-width: min(90vw, calc(100vh - 270px)); }
+.puzzle-card { order: 8; width: 100%; max-width: min(90vw, calc(100vh - 270px)); }
+.replay-card { order: 9; width: 100%; max-width: min(90vw, calc(100vh - 270px)); }
+.p2p-card { order: 10; width: 100%; max-width: min(90vw, calc(100vh - 270px)); }
+.ai-monitor-card { order: 11; width: 100%; max-width: min(90vw, calc(100vh - 270px)); }
 
 /* 雙欄橫向媒體查詢移至檔案底部以防覆蓋 */
 
@@ -2245,6 +2245,7 @@ body.theme-slate .forbidden-marker {
     .glass-card {
         padding: 12px !important; /* 卡片邊距縮小至 12px */
         border-radius: 12px !important; /* 邊角微調 */
+        max-width: 100% !important; /* 手機直立時卡片寬度100%撐滿 container */
     }
     
     .board-container {
