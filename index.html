@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>極致美學五子棋 - Cyber Gomoku</title>
-    <link rel="stylesheet" href="style.css?t=1782411137000">
+    <link rel="stylesheet" href="style.css?t=1782411649000">
     <!-- Google Fonts: Inter & Outfit for modern look -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -364,18 +364,19 @@
             <h2 class="modal-title">關於遊戲</h2>
             <div class="modal-scroll-area">
                 <p style="margin-bottom: 12px; font-weight: 600; text-align: center; font-size: 1rem; color: var(--text-primary);">🌌 Cyber Gomoku - 極致美學五子棋</p>
-                <p style="margin-bottom: 6px;"><strong>目前版本：</strong>v3.5.0</p>
+                <p style="margin-bottom: 6px;"><strong>目前版本：</strong>v3.6.0</p>
                 <p style="margin-bottom: 6px;"><strong>發布日期：</strong>2026-06-25</p>
                 <p style="margin-bottom: 12px;"><strong>開發團隊：</strong>Flash2u</p>
                 <hr>
-                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">🛠️ 本版本摘要 (v3.5.0)：</p>
+                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">🛠️ 本版本摘要 (v3.6.0)：</p>
                 <ul>
-                    <li>📱 **彈窗與文字提示寬度自適應**：優化了開局引導提示（board-start-toast）在手機直立時自動折行，並修復了「關於遊戲」彈窗在小螢幕被切邊偏右的 Bug，提供極佳的防溢出體驗。</li>
+                    <li>📱 **彈窗定位基準鎖定與百分比防溢出**：將遮罩改為 border 固定拉伸，徹底解決 100vw 在行動端偏右切邊的 Fixed 基準 Bug；並將小螢幕彈窗寬度改為相對遮罩的百分比計算，保證 100% 居中。</li>
                 </ul>
                 <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-secondary);">📜 歷史版本摘要：</p>
                 <details style="margin-bottom: 12px; font-size: 0.85rem; color: var(--text-secondary);">
-                    <summary style="cursor: pointer; padding: 4px 0; color: var(--accent-primary); outline: none;">查看歷史更新歷史 (v3.4.0 及更早)</summary>
+                    <summary style="cursor: pointer; padding: 4px 0; color: var(--accent-primary); outline: none;">查看歷史更新歷史 (v3.5.0 及更早)</summary>
                     <ul style="padding-left: 16px; margin-top: 8px;">
+                        <li>📱 **v3.5.0**：優化了開局引導提示（board-start-toast）自動折行，解決窄螢幕溢出。</li>
                         <li>📱 **v3.4.0**：重新開始按鈕移入「遊戲狀態卡」下方，並將手機直屏棋盤寬度極致放大至 96vw。</li>
                         <li>📱 **v3.3.0**：調整平板與手機的直橫向畫面，使首屏完美容納標題、狀態及最大化棋盤，並新增手機橫置提示畫面。</li>
                         <li>👤 **v3.2.0**：更新關於遊戲面板中的開發團隊名稱為 Flash2u，並同步升級應用程式與 P2P 通訊模組版本。</li>
@@ -424,9 +425,9 @@
     <canvas id="screen-canvas" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 9999;"></canvas>
 
     <!-- Load scripts at the end -->
-    <script src="src/peerjs.min.js?t=1782411137000"></script>
-    <script src="ai.js?t=1782411137000"></script>
-    <script type="module" src="app.js?t=1782411137000"></script>
+    <script src="src/peerjs.min.js?t=1782411649000"></script>
+    <script src="ai.js?t=1782411649000"></script>
+    <script type="module" src="app.js?t=1782411649000"></script>
 </body>
 </html>
 
