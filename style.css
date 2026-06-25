@@ -993,6 +993,10 @@ body.theme-neon .stone.winning-stone {
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+#about-modal .modal-content {
+    max-width: 480px;
+}
+
 .modal-overlay.active .modal-content {
     transform: scale(1);
 }
@@ -1358,6 +1362,9 @@ body.theme-neon .cell.forbidden:not(.has-stone):hover .hover-preview.black {
     z-index: 1;
     position: relative;
     color: var(--text-secondary);
+    word-break: break-word;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .modal-scroll-area hr {
@@ -1715,18 +1722,21 @@ body.theme-slate .board-wrapper.view-3d {
     border: 1.5px solid var(--accent-primary);
     box-shadow: 0 0 25px rgba(0, 242, 254, 0.45), inset 0 0 15px rgba(0, 242, 254, 0.2);
     color: var(--text-primary);
-    padding: 16px 36px;
+    padding: 12px 24px;
     border-radius: 12px;
-    font-size: 1.25rem;
+    font-size: 1.1rem;
     font-weight: 600;
-    letter-spacing: 2px;
+    letter-spacing: 1px;
     z-index: 100;
     pointer-events: none; /* 防止阻擋滑鼠落子點擊 */
     transition: opacity 0.5s cubic-bezier(0.25, 1, 0.5, 1), transform 0.5s cubic-bezier(0.25, 1, 0.5, 1);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     text-align: center;
-    white-space: nowrap;
+    width: 90%;
+    box-sizing: border-box;
+    white-space: normal;
+    word-break: break-all;
 }
 
 .board-start-toast.fade-out {
@@ -2061,6 +2071,12 @@ body.theme-slate .forbidden-marker {
         border-radius: 12px !important;
         border-width: 3px !important;
         max-width: 100% !important;
+    }
+    
+    .modal-content, #about-modal .modal-content {
+        width: 92% !important;
+        max-width: calc(100vw - 32px) !important;
+        padding: 24px 16px !important;
     }
     
     /* 3D 傾角在窄螢幕上略微減小，防止邊角溢出 */
