@@ -313,7 +313,7 @@ body.theme-slate .brand-title span {
     height: 32px;
 }
 
-/* 2. 接下來是整個棋盤，全寬度，只要符合比例，盡可能夠寬，但高度不能超過一個畫面能容納的範圍 */
+/* 2. 接下來是整個棋盤：在首屏(一個畫面)能完整容納的基準上，盡可能用到所有寬度，高度絕對不超出一屏 */
 .board-container {
     width: 100%;
     max-width: 100%;
@@ -323,24 +323,27 @@ body.theme-slate .brand-title span {
     pointer-events: none;
     box-sizing: border-box;
     padding: 0;
-    margin: 0 auto;
+    margin: 2px auto;
 }
 
 .board-wrapper {
-    /* 核心尺寸公式：
-       高度不超過一個畫面能容納的範圍 (100dvh 扣除頂部條 46px 和上下外距 padding 約 20px = 66px)
-       全寬度，且寬高正方形比例 1:1，在平板橫放或寬螢幕下以高度為上限盡可能極致放大！
-       在手機或直立平板下以寬度 100% 為上限！
+    /*
+       核心尺寸幾何限制：
+       螢幕可用高度扣除頂部回合條與安全邊距 (約 72px)。
+       尺寸 = min(calc(100vw - 24px), calc(100dvh - 72px))！
+       - 橫向/寬螢幕/平板橫放：尺寸由 (100dvh - 72px) 限制，吃滿畫面高度，寬度等比放大，絕不超出首屏！
+       - 直向/手機/平板直放：尺寸由 (100vw - 24px) 限制，吃滿可用寬度，高度等比，完全在首屏內！
     */
-    width: min(100%, calc(100dvh - 66px));
-    height: min(100%, calc(100dvh - 66px));
-    max-width: min(100%, calc(100dvh - 66px));
-    max-height: min(100%, calc(100dvh - 66px));
+    --board-fit-size: min(calc(100vw - 24px), calc(100dvh - 72px));
+    width: var(--board-fit-size);
+    height: var(--board-fit-size);
+    max-width: var(--board-fit-size);
+    max-height: var(--board-fit-size);
     aspect-ratio: 1 / 1;
     background: var(--board-bg);
     border: 4px solid var(--board-border);
     border-radius: 18px;
-    padding: 16px;
+    padding: 12px;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
     transition: all 0.5s ease;
     box-sizing: border-box;
@@ -671,28 +674,6 @@ body.theme-slate .stat-item {
 /* ==========================================================================
    GOMOKU BOARD
    ========================================================================== */
-
-.board-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    pointer-events: none; /* 穿透容器，防止 3D 傾斜時遮擋棋盤 */
-}
-
-.board-wrapper {
-    background: var(--board-bg);
-    border: 4px solid var(--board-border);
-    border-radius: 20px;
-    padding: 24px;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
-    transition: all 0.5s ease;
-    width: 100%;
-    max-width: 100%; /* 直向由 container 限制，橫向由 media query 限制 */
-    aspect-ratio: 1 / 1;
-    pointer-events: auto; /* 確保棋盤及子元素可點擊 */
-    position: relative; /* 確保偽元素絕對定位 */
-}
 
 /* 3D 滑鼠隨動動態反射高光層 */
 .board-wrapper::before {
@@ -2255,18 +2236,19 @@ body.theme-slate .forbidden-marker {
 @media (max-width: 680px) {
     .app-container {
         padding: 4px;
-        gap: 6px;
+        gap: 4px;
     }
     
     .turn-status-bar {
-        padding: 8px 6px !important;
+        padding: 6px 8px !important;
         flex-wrap: wrap !important;
         gap: 6px !important;
         border-radius: 10px !important;
+        min-height: 40px !important;
     }
     
     .status-brand {
-        display: none !important; /* 手機端隱藏品牌名，全部寬度留給狀態與操作 */
+        display: none !important;
     }
     
     .status-turn-info {
@@ -2289,10 +2271,11 @@ body.theme-slate .forbidden-marker {
     }
     
     .board-wrapper {
-        width: 100% !important;
-        height: 100% !important;
-        max-width: min(100vw - 8px, calc(100dvh - 86px)) !important;
-        max-height: min(100vw - 8px, calc(100dvh - 86px)) !important;
+        --board-fit-size: min(calc(100vw - 12px), calc(100dvh - 84px));
+        width: var(--board-fit-size) !important;
+        height: var(--board-fit-size) !important;
+        max-width: var(--board-fit-size) !important;
+        max-height: var(--board-fit-size) !important;
         padding: 6px !important;
         border-radius: 12px !important;
         border-width: 3px !important;
