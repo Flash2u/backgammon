@@ -33,11 +33,9 @@
         </header>
 
         <main class="game-layout">
-            <!-- Sidebar: Control Panel and Stats -->
-            <section class="sidebar-panel">
-                <!-- Status Card -->
-                <div class="glass-card status-card">
-                    <h2 class="card-title">遊戲狀態</h2>
+            <!-- Top Controls Bar: 橫向排列的狀態與精簡操作按鈕 -->
+            <section class="top-controls-card glass-card status-card ops-card">
+                <div class="top-status-area">
                     <div class="status-indicator">
                         <div class="turn-dot current-black"></div>
                         <span id="status-text">準備就緒，請選擇模式開始</span>
@@ -46,97 +44,125 @@
                         <span class="timer-icon">⏱️</span>
                         <span id="game-timer">00:00</span>
                     </div>
-                    <button id="btn-start" class="btn-primary" style="margin-top: 16px; width: 100%;">重新開始</button>
                 </div>
+                <div class="top-actions-area">
+                    <button id="btn-start" class="btn-primary">重新開始</button>
+                    <button id="btn-undo" class="btn-secondary" disabled>
+                        <span class="btn-icon">↩️</span> 悔棋
+                    </button>
+                    <button id="btn-sound" class="btn-secondary">
+                        <span class="btn-icon" id="sound-icon">🔊</span> 音效: 開
+                    </button>
+                    <button id="btn-sgf-library" class="btn-secondary">
+                        <span class="btn-icon">📚</span> 棋譜庫
+                    </button>
+                    <button id="btn-puzzle-editor" class="btn-secondary">
+                        <span class="btn-icon">🛠️</span> 殘局編輯
+                    </button>
+                    <button id="btn-about" class="btn-secondary">
+                        <span class="btn-icon">ℹ️</span> 關於遊戲
+                    </button>
+                </div>
+            </section>
 
+            <!-- Game Board View: 超大棋盤，居中，最大化利用螢幕寬度與高度 -->
+            <section class="board-container">
+                <div class="board-wrapper">
+                    <!-- The Gomoku Board -->
+                    <div id="gomoku-board" class="gomoku-board"></div>
+                    <canvas id="threat-canvas" class="threat-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;"></canvas>
+                    <div id="board-start-toast" class="board-start-toast"></div>
+                </div>
+            </section>
+
+            <!-- Bottom Panel: 棋盤之下的遊戲設定與其他面板，不佔用左右寬度 -->
+            <section class="bottom-panel sidebar-panel">
                 <!-- Setup Card -->
                 <div class="glass-card config-card">
                     <h2 class="card-title">遊戲設定</h2>
-                    
-                    <div class="form-group">
-                        <label>對戰模式</label>
-                        <div class="segmented-control" id="mode-select">
-                            <button class="active" data-mode="ai">人機對戰</button>
-                            <button data-mode="pvp">雙人對決</button>
-                            <button data-mode="p2p">線上對戰</button>
-                            <button data-mode="puzzle">殘局闖關</button>
+                    <div class="config-grid">
+                        <div class="form-group">
+                            <label>對戰模式</label>
+                            <div class="segmented-control" id="mode-select">
+                                <button class="active" data-mode="ai">人機對戰</button>
+                                <button data-mode="pvp">雙人對決</button>
+                                <button data-mode="p2p">線上對戰</button>
+                                <button data-mode="puzzle">殘局闖關</button>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="form-group" id="difficulty-group">
-                        <label>AI 難度</label>
-                        <div class="segmented-control" id="difficulty-select">
-                            <button data-diff="easy">簡單</button>
-                            <button class="active" data-diff="medium">中等</button>
-                            <button data-diff="hard">困難</button>
+                        <div class="form-group" id="difficulty-group">
+                            <label>AI 難度</label>
+                            <div class="segmented-control" id="difficulty-select">
+                                <button data-diff="easy">簡單</button>
+                                <button class="active" data-diff="medium">中等</button>
+                                <button data-diff="hard">困難</button>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="form-group">
-                        <label>視覺風格</label>
-                        <div class="theme-selector">
-                            <button class="theme-btn btn-neon active" data-theme="neon" title="暗黑霓虹"></button>
-                            <button class="theme-btn btn-wood" data-theme="wood" title="經典木紋"></button>
-                            <button class="theme-btn btn-slate" data-theme="slate" title="極簡雅緻"></button>
+                        <div class="form-group">
+                            <label>視覺風格</label>
+                            <div class="theme-selector">
+                                <button class="theme-btn btn-neon active" data-theme="neon" title="暗黑霓虹"></button>
+                                <button class="theme-btn btn-wood" data-theme="wood" title="經典木紋"></button>
+                                <button class="theme-btn btn-slate" data-theme="slate" title="極簡雅緻"></button>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="form-group">
-                        <label>視角切換</label>
-                        <div class="segmented-control" id="perspective-select">
-                            <button class="active" data-view="2d">2D 平面</button>
-                            <button data-view="3d">3D 視角</button>
+                        <div class="form-group">
+                            <label>視角切換</label>
+                            <div class="segmented-control" id="perspective-select">
+                                <button class="active" data-view="2d">2D 平面</button>
+                                <button data-view="3d">3D 視角</button>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="form-group">
-                        <label>威脅提示 (活三/四子)</label>
-                        <div class="segmented-control" id="hint-select">
-                            <button class="active" data-hint="on">開啟</button>
-                            <button data-hint="off">關閉</button>
+                        <div class="form-group">
+                            <label>威脅提示 (活三/四子)</label>
+                            <div class="segmented-control" id="hint-select">
+                                <button class="active" data-hint="on">開啟</button>
+                                <button data-hint="off">關閉</button>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="form-group">
-                        <label>規則設定</label>
-                        <div class="segmented-control" id="rules-select">
-                            <button class="active" data-rules="standard">標準規則</button>
-                            <button data-rules="renju">禁手規則</button>
+                        <div class="form-group">
+                            <label>規則設定</label>
+                            <div class="segmented-control" id="rules-select">
+                                <button class="active" data-rules="standard">標準規則</button>
+                                <button data-rules="renju">禁手規則</button>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="form-group">
-                        <label>限時規則</label>
-                        <div class="segmented-control" id="time-select">
-                            <button class="active" data-time="none">無限制</button>
-                            <button data-time="15s">15 秒</button>
-                            <button data-time="30s">30 秒</button>
-                            <button data-time="60s">60 秒</button>
+                        <div class="form-group">
+                            <label>限時規則</label>
+                            <div class="segmented-control" id="time-select">
+                                <button class="active" data-time="none">無限制</button>
+                                <button data-time="15s">15 秒</button>
+                                <button data-time="30s">30 秒</button>
+                                <button data-time="60s">60 秒</button>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Operations Card -->
-                <div class="glass-card ops-card">
-                    <div class="btn-row" style="margin-top: 0;">
-                        <button id="btn-undo" class="btn-secondary" disabled>
-                            <span class="btn-icon">↩️</span> 悔棋
-                        </button>
-                        <button id="btn-sound" class="btn-secondary">
-                            <span class="btn-icon" id="sound-icon">🔊</span> 音效: 開
-                        </button>
+                <!-- Statistics Card -->
+                <div class="glass-card stats-card">
+                    <h2 class="card-title">對戰數據</h2>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-label" id="player1-label">黑棋勝</span>
+                            <span class="stat-value" id="stat-p1-wins">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label" id="player2-label">AI勝</span>
+                            <span class="stat-value" id="stat-p2-wins">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">平局數</span>
+                            <span class="stat-value" id="stat-draws">0</span>
+                        </div>
                     </div>
-                    <div class="btn-row" style="margin-top: 12px; display: flex; gap: 8px;">
-                        <button id="btn-sgf-library" class="btn-secondary" style="flex: 1; margin-top: 0;">
-                            <span class="btn-icon">📚</span> 棋譜庫
-                        </button>
-                        <button id="btn-puzzle-editor" class="btn-secondary" style="flex: 1; margin-top: 0;">
-                            <span class="btn-icon">🛠️</span> 殘局編輯
-                        </button>
-                    </div>
-                    <button id="btn-about" class="btn-secondary" style="width: 100%; margin-top: 12px;">
-                        <span class="btn-icon">ℹ️</span> 關於遊戲
-                    </button>
+                    <button id="btn-clear-stats" class="btn-link">清除數據</button>
                 </div>
 
                 <!-- SGF Library Card -->
@@ -274,7 +300,6 @@
                         </div>
                     </div>
 
-
                     <!-- P2P Chat Area (v1.9.0) -->
                     <div class="p2p-chat-area" id="p2p-chat-area" style="display: none;">
                         <label class="p2p-chat-label">線上對局聊天室</label>
@@ -308,36 +333,6 @@
                         <div id="ai-monitor-pv" style="white-space: nowrap; text-overflow: ellipsis; overflow: hidden; color: #3b82f6;">預測路徑: -</div>
                     </div>
                 </div>
-
-                <!-- Statistics Card -->
-                <div class="glass-card stats-card">
-                    <h2 class="card-title">對戰數據</h2>
-                    <div class="stats-grid">
-                        <div class="stat-item">
-                            <span class="stat-label" id="player1-label">黑棋勝</span>
-                            <span class="stat-value" id="stat-p1-wins">0</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label" id="player2-label">AI勝</span>
-                            <span class="stat-value" id="stat-p2-wins">0</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">平局數</span>
-                            <span class="stat-value" id="stat-draws">0</span>
-                        </div>
-                    </div>
-                    <button id="btn-clear-stats" class="btn-link">清除數據</button>
-                </div>
-            </section>
-
-            <!-- Game Board View -->
-            <section class="board-container">
-                <div class="board-wrapper">
-                    <!-- The Gomoku Board -->
-                    <div id="gomoku-board" class="gomoku-board"></div>
-                    <canvas id="threat-canvas" class="threat-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;"></canvas>
-                    <div id="board-start-toast" class="board-start-toast"></div>
-                </div>
             </section>
         </main>
     </div>
@@ -364,11 +359,11 @@
             <h2 class="modal-title">關於遊戲</h2>
             <div class="modal-scroll-area">
                 <p style="margin-bottom: 12px; font-weight: 600; text-align: center; font-size: 1rem; color: var(--text-primary);">🌌 Cyber Gomoku - 極致美學五子棋</p>
-                <p style="margin-bottom: 6px;"><strong>目前版本：</strong>v3.7.1</p>
-                <p style="margin-bottom: 6px;"><strong>發布日期：</strong>2026-06-26</p>
+                <p style="margin-bottom: 6px;"><strong>目前版本：</strong>v3.8.0</p>
+                <p style="margin-bottom: 6px;"><strong>發布日期：</strong>2026-09-21</p>
                 <p style="margin-bottom: 12px;"><strong>開發團隊：</strong>Flash2u</p>
                 <hr>
-                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">🛠️ 本版本摘要 (v3.7.1)：</p>
+                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">🛠️ 本版本摘要 (v3.8.0)：</p>
                 <ul>
                     <li>📱 **平板直立面板對齊與橫向限寬**：優化平板直立時控制面板的最大寬度與棋盤寬度完全一致，使左右邊界完美對齊拉滿；並確保橫向雙欄下限制左側面板寬度，將最大寬度留給棋盤展示。</li>
                 </ul>
