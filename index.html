@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>極致美學五子棋 - Cyber Gomoku</title>
-    <link rel="stylesheet" href="style.css?t=1782441600000">
+    <link rel="stylesheet" href="style.css?t=1789925800000">
     <!-- Google Fonts: Inter & Outfit for modern look -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,25 +27,21 @@
         <div class="bg-glow glow-1"></div>
         <div class="bg-glow glow-2"></div>
 
-        <header class="app-header">
-            <h1 class="app-title">CYBER<span>GOMOKU</span></h1>
-            <p class="app-subtitle">霓虹五子棋對決</p>
-        </header>
-
         <main class="game-layout">
-            <!-- Top Controls Bar: 橫向排列的狀態與精簡操作按鈕 -->
-            <section class="top-controls-card glass-card status-card ops-card">
-                <div class="top-status-area">
-                    <div class="status-indicator">
-                        <div class="turn-dot current-black"></div>
-                        <span id="status-text">準備就緒，請選擇模式開始</span>
-                    </div>
+            <!-- 1. 最上面：目前回合輪到誰的區塊，全寬度、橫向排列，不要佔太多高度 -->
+            <section class="turn-status-bar glass-card status-card ops-card">
+                <div class="status-brand">
+                    <span class="brand-title">CYBER<span>GOMOKU</span></span>
+                </div>
+                <div class="status-turn-info">
+                    <div class="turn-dot current-black"></div>
+                    <span id="status-text">準備就緒，請選擇模式開始</span>
                     <div class="timer-display">
                         <span class="timer-icon">⏱️</span>
                         <span id="game-timer">00:00</span>
                     </div>
                 </div>
-                <div class="top-actions-area">
+                <div class="status-actions">
                     <button id="btn-start" class="btn-primary">重新開始</button>
                     <button id="btn-undo" class="btn-secondary" disabled>
                         <span class="btn-icon">↩️</span> 悔棋
@@ -54,18 +50,18 @@
                         <span class="btn-icon" id="sound-icon">🔊</span> 音效: 開
                     </button>
                     <button id="btn-sgf-library" class="btn-secondary">
-                        <span class="btn-icon">📚</span> 棋譜庫
+                        <span class="btn-icon">📚</span> 棋譜
                     </button>
                     <button id="btn-puzzle-editor" class="btn-secondary">
-                        <span class="btn-icon">🛠️</span> 殘局編輯
+                        <span class="btn-icon">🛠️</span> 殘局
                     </button>
                     <button id="btn-about" class="btn-secondary">
-                        <span class="btn-icon">ℹ️</span> 關於遊戲
+                        <span class="btn-icon">ℹ️</span> 關於
                     </button>
                 </div>
             </section>
 
-            <!-- Game Board View: 超大棋盤，居中，最大化利用螢幕寬度與高度 -->
+            <!-- 2. 接下來是整個棋盤，全寬度，符合比例，盡可能夠寬，但高度不超過一個畫面 -->
             <section class="board-container">
                 <div class="board-wrapper">
                     <!-- The Gomoku Board -->
@@ -75,9 +71,9 @@
                 </div>
             </section>
 
-            <!-- Bottom Panel: 棋盤之下的遊戲設定與其他面板，不佔用左右寬度 -->
-            <section class="bottom-panel sidebar-panel">
-                <!-- Setup Card -->
+            <!-- 3. 最後才是遊戲設計框放到最下面，全寬度，不佔用左右寬度 -->
+            <section class="bottom-settings-panel">
+                <!-- 遊戲設定框 (Setup Card) -->
                 <div class="glass-card config-card">
                     <h2 class="card-title">遊戲設定</h2>
                     <div class="config-grid">
@@ -334,7 +330,7 @@
                     </div>
                 </div>
             </section>
-        </main>
+</main>
     </div>
 
     <!-- Win Modal (Popup Dialog) -->
@@ -359,11 +355,11 @@
             <h2 class="modal-title">關於遊戲</h2>
             <div class="modal-scroll-area">
                 <p style="margin-bottom: 12px; font-weight: 600; text-align: center; font-size: 1rem; color: var(--text-primary);">🌌 Cyber Gomoku - 極致美學五子棋</p>
-                <p style="margin-bottom: 6px;"><strong>目前版本：</strong>v3.8.0</p>
+                <p style="margin-bottom: 6px;"><strong>目前版本：</strong>v3.8.1</p>
                 <p style="margin-bottom: 6px;"><strong>發布日期：</strong>2026-09-21</p>
                 <p style="margin-bottom: 12px;"><strong>開發團隊：</strong>Flash2u</p>
                 <hr>
-                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">🛠️ 本版本摘要 (v3.8.0)：</p>
+                <p style="margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">🛠️ 本版本摘要 (v3.8.1)：</p>
                 <ul>
                     <li>📱 **平板直立面板對齊與橫向限寬**：優化平板直立時控制面板的最大寬度與棋盤寬度完全一致，使左右邊界完美對齊拉滿；並確保橫向雙欄下限制左側面板寬度，將最大寬度留給棋盤展示。</li>
                 </ul>
@@ -422,9 +418,9 @@
     <canvas id="screen-canvas" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 9999;"></canvas>
 
     <!-- Load scripts at the end -->
-    <script src="src/peerjs.min.js?t=1782441600000"></script>
-    <script src="ai.js?t=1782441600000"></script>
-    <script type="module" src="app.js?t=1782441600000"></script>
+    <script src="src/peerjs.min.js?t=1789925800000"></script>
+    <script src="ai.js?t=1789925800000"></script>
+    <script type="module" src="app.js?t=1789925800000"></script>
 </body>
 </html>
 
